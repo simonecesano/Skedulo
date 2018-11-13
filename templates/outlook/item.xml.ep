@@ -1,0 +1,31 @@
+% layout 'outlook/header', format => 'xml';
+% content_for body => begin
+  <m:GetItem>
+    <m:ItemShape>
+      <t:BaseShape>Default</t:BaseShape>
+      <t:AdditionalProperties>
+        <t:FieldURI FieldURI="item:Subject" />
+        <t:FieldURI FieldURI="calendar:Start" />
+        <t:FieldURI FieldURI="calendar:End" />
+	<t:FieldURI FieldURI="calendar:TimeZone" />
+	<t:FieldURI FieldURI="calendar:Location" />
+	<t:FieldURI FieldURI="calendar:IsAllDayEvent" />
+	<t:FieldURI FieldURI="calendar:IsRecurring" />
+	<t:FieldURI FieldURI="calendar:AppointmentState" />
+	<t:FieldURI FieldURI="calendar:MyResponseType" />	  	  
+	<t:FieldURI FieldURI="calendar:DateTimeStamp" />
+	<t:FieldURI FieldURI="calendar:Organizer" />
+	<t:FieldURI FieldURI="calendar:RequiredAttendees" />
+	<t:FieldURI FieldURI="calendar:ConflictingMeetingCount" />
+	<t:FieldURI FieldURI="calendar:ConflictingMeetings" />
+	<t:FieldURI FieldURI="calendar:AdjacentMeetingCount" />
+	<t:FieldURI FieldURI="calendar:AdjacentMeetings" />
+	<t:FieldURI FieldURI="item:LastModifiedTime" />
+	<t:FieldURI FieldURI="item:DateTimeReceived" />
+      </t:AdditionalProperties>
+    </m:ItemShape>
+    <m:ItemIds>
+      <t:ItemId Id="<%= $id %>" />
+    </m:ItemIds>
+  </m:GetItem>
+% end

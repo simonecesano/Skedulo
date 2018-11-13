@@ -1,0 +1,31 @@
+% layout 'outlook/header', format => 'xml';
+% content_for header => begin
+% end
+% content_for body => begin
+    <m:FindItem Traversal="Shallow">
+      <m:ItemShape>
+        <t:BaseShape>AllProperties</t:BaseShape>
+        <t:AdditionalProperties>
+          <t:FieldURI FieldURI="item:Subject" />
+          <t:FieldURI FieldURI="calendar:Start" />
+          <t:FieldURI FieldURI="calendar:End" />
+	  <t:FieldURI FieldURI="calendar:TimeZone" />
+	  <t:FieldURI FieldURI="calendar:Location" />
+	  <t:FieldURI FieldURI="calendar:IsAllDayEvent" />
+	  <t:FieldURI FieldURI="calendar:IsRecurring" />
+	  <t:FieldURI FieldURI="calendar:AppointmentState" />
+	  <t:FieldURI FieldURI="calendar:MyResponseType" />	  	  
+	  <t:FieldURI FieldURI="calendar:DateTimeStamp" />
+	  <t:FieldURI FieldURI="calendar:Organizer" />
+	  <t:FieldURI FieldURI="calendar:RequiredAttendees" />
+	  <t:FieldURI FieldURI="calendar:ConflictingMeetingCount" />
+	  <!-- <t:FieldURI FieldURI="calendar:LastModifiedTime" /> -->
+	  <!-- <t:FieldURI FieldURI="calendar:DateTimeReceived" /> -->
+        </t:AdditionalProperties>
+      </m:ItemShape>
+      <m:CalendarView MaxEntriesReturned="10000" StartDate="<%= $start %>" EndDate="<%= $end %>" />
+      <m:ParentFolderIds>
+        <t:FolderId Id="<%= session('calendar') %>"/>
+      </m:ParentFolderIds>
+    </m:FindItem>
+% end
