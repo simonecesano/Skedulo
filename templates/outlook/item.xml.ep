@@ -1,6 +1,6 @@
 % layout 'outlook/header', format => 'xml';
 % content_for body => begin
-  <m:GetItem>
+  <m:GetItem Traversal="Deep">
     <m:ItemShape>
       <t:BaseShape>Default</t:BaseShape>
       <t:AdditionalProperties>
