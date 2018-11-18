@@ -1,0 +1,14 @@
+% layout 'default';
+<div id="landing" class="container-fluid">
+  Hello <%= session('given_name') %>
+  <a href="<%= url_for('/meet/me') %>">meetings</a>
+</div>
+<script>
+  $(function(){
+      fetch("<%= url_for('/setup/calendar') %>")
+	  .then(function(d){
+	      console.log('calendar is set up')
+	  })
+
+  })
+</script>
