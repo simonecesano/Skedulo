@@ -1,0 +1,7 @@
+% layout 'default';
+<div id="error" class="container-fluid">
+  There was an error
+</div>
+<pre>
+  <%= flash('dom') %>
+</pre>
