@@ -8,6 +8,7 @@
   .conflict { border-bottom: thin solid white; border-top: thin solid #aaaaaa }
   .organizer:empty {}
   a { color: black }
+  h3 { font-size: 1.4em }
   h4 { display: inline-block; font-size: 1.2em; color: black }
   .container-fluid { padding-top: 32px }
   .container { padding-top: 32px }
@@ -54,8 +55,8 @@ Handlebars.registerHelper('moment-format', function() {
 	      d = new Meeting(d);
 	      var source   = document.getElementById("entry-template").innerHTML;
 	      var template = Handlebars.compile(source);
-	      console.log(d);
-	      console.log(template(d));
+	      // console.log(d);
+	      // console.log(template(d));
 	      $('#meetings').html(template(d));
 	      return d;
 	  })
@@ -67,12 +68,38 @@ Handlebars.registerHelper('moment-format', function() {
 			  $.get('/item/' + e.ItemId.Id + '?format=json')
 			      .then(function(d){
 				  d = new Meeting(d);
+				  try {
+				  } catch(e) {
+				      console.log(e)
+				  }
+
 				  $('#' + md5(d.ItemId.Id) + ' span.organizer').html(d.Organizer.Mailbox.Name)
 				  $('#' + md5(d.ItemId.Id) + ' span.attendees').html(d.RequiredAttendeesList)
+				  // $('#' + md5(d.ItemId.Id)).attr('data-mine', d.IsMine ? 'mine' : 'received' );
+				  $('#' + md5(d.ItemId.Id)).attr('data-mine', d.IsMine ? 'mine' : 'received' );
 			      })
+			      .catch(e => { console.log(e)})
 		      })
 	      }
 	      return d;
+	  })
+	  .then(d => {
+	      $('.conflicts .meeting').each(function(i, e){
+		  // console.log(e);
+		  var hammertime = new Hammer(e);
+		  var url = new URI;
+		  hammertime.on('swiperight', function(ev) {
+		      $.post( url.toString(), { action: $(ev.target).data('mine').match(/mine/) ? 'null' : 'accept' } )
+			  .then(d => { console.log(d) });
+		  });
+		  hammertime.on('swipeleft', function(ev) {
+		      $.post( url.toString(), { action: $(ev.target).data('mine').match(/mine/) ? 'cancel' : 'decline' } )
+			  .then(d => {
+			      console.log(d)
+			      $(ev.target).hide(1000)
+			  });
+		  });
+	      })
 	  })
 	  .catch(function(e){
 	      console.log('------------');
@@ -109,7 +136,7 @@ Handlebars.registerHelper('moment-format', function() {
     <div class="conflicts col-12" style="margin-top:12px; padding-top:12px; border-top: thin solid grey">
       <div><h4>conflicts</h4></div>
       {{#each ConflictingMeetings.CalendarItem }}
-      <div class="meeting" id="{{ md5 ItemId.Id }}">
+      <div class="meeting" data-id="{{ ItemId.Id }}" id="{{ md5 ItemId.Id }}">
 	<a href="/item/{{ ItemId.Id }}">{{ Subject }}</a><br/>
 	{{ moment-format Start 'DD MMM, ddd HH:mm' }}<br/>
 	<span class="organizer"></span><br/>
