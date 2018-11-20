@@ -1,0 +1,13 @@
+% layout 'outlook/header', format => 'xml';
+% content_for header => begin
+% end
+% content_for body => begin
+<m:GetFolder>
+  <m:FolderShape>
+    <t:BaseShape>IdOnly</t:BaseShape>
+  </m:FolderShape>
+  <m:FolderIds>
+    <t:DistinguishedFolderId Id="<%= $folder %>" />
+  </m:FolderIds>
+</m:GetFolder>
+% end
