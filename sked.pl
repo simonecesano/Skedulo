@@ -29,7 +29,7 @@ hook (before_dispatch => sub {
 hook (before_render => sub {
 	  my $c = shift;
 	  
-	  $c->app->log->info($c->req->url);
+	  # $c->app->log->info($c->req->url);
 	  return $c;
       });
 
@@ -58,6 +58,7 @@ helper 'get_ews' => sub {
 helper 'set_dates' => sub {
     my $c = shift;
     my $start;
+
     for (qw/start end/) {
 	my $date;
 	app->log->info($_);
@@ -75,11 +76,25 @@ helper 'set_dates' => sub {
 	    $date = DateTime->$f;
 	} else {
 	    # strptime
-	    $date = $c->stash($_);
+	    $date = DateTime->from_epoch( epoch => str2time($c->stash($_)) );
 	}
-	$start = str2time($date);
-	$c->stash($_, DateTime->from_epoch( epoch => $start ));
+	$c->stash($_, $date)
     }
+    return $c;
+};
+
+helper 'set_user' => sub {
+    my $c = shift;
+    $c->stash('user', $c->session('user')) if $c->stash('who') eq 'me';
+    return $c;
+};
+
+get '/date/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
+    my $c = shift;
+
+    $c->set_dates()->set_user();
+    
+    $c->render(text => join ' ', $c->stash('start'), $c->stash('end'), $c->stash('user')); 
 };
 
 get '/login' => sub {
@@ -93,6 +108,8 @@ get '/me';
 get '/error';
 
 get '/session';
+
+
 
 post '/login' => sub {
     my $c = shift;
@@ -110,6 +127,8 @@ post '/login' => sub {
 	    $c->session('user', $c->param('user'));
 	    $c->session('given_name', $json->{GivenName});	
 	    $c->cookie('user' => $c->param('user'));
+	    app->log->info(dumper $c->req->params->to_hash);
+	    
 	    $c->redirect_to('/me');
 	} else {
 	    $c->flash('error', 'login error');
@@ -130,28 +149,34 @@ get '/setup/:folder' => sub {
     $url->userinfo(join ':', $c->session('user'), $c->session('password'));
     my $ua  = Mojo::UserAgent->new();
 
+    app->log->info($url->userinfo);
+    app->log->info($c->cookie('user'));
+    app->log->info(dumper $c->session);
+
     my $xml = $c->render_to_string(template => 'outlook/folder_search', format => "xml");
     my $tx = $ua->post($url => {'Content-Type' => 'text/xml', 'Accept-Encoding' => 'None' } => $xml);
     my $dom = $tx->res->dom;
-
+    app->log->info('setting up calendar');
+    app->log->info('$dom->at("FolderId")->attr("Id")');    
     app->log->info($dom->at('FolderId')->attr('Id'));
     $c->session('calendar', $dom->at('FolderId')->attr('Id'));
-    app->log->info($c->session('calendar'));
+    app->log->info('calendar');
+    app->log->debug($c->session('calendar'));
     $c->render( json => xml_to_hash($dom) );
 };
-
-
-
     
-get '/meet/me/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
+get '/meet/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
     my $c = shift;
+
+    $c->set_dates()->set_user();
+
+    app->log->info('calendar');
+    app->log->info($c->session('calendar'));
 
     if ($c->stash('format') =~/(^$)|(html$)/) {
 	return $c->render(template => 'meeting_list')
     }
 
-    $c->set_dates();
-    
     my $tx = $c->get_ews('outlook/meetings');
     my $dom = $tx->res->dom;
     
@@ -174,6 +199,42 @@ get '/meet/me/:start/:end' => { who => 'me', start => 'today', end => '+7' } => 
     }
 };
 
+get '/item/decline/*id' => sub {
+    my $c = shift;
+    my $action = $c->param('action');
+    
+    my $tx = $c->get_ews('outlook/accept_decline');
+    my $dom = $tx->res->dom;
+
+    return $c->render( text => $dom );
+
+    for ($c->stash('format')) {
+	/xml/i && do {
+	    return $c->render( text => pp_xml($dom) )
+	};
+	/json/i && do {
+	    my $json;
+	    if ($tx->res->is_success) {
+		$json = xml_to_hash($dom->find('CalendarItem'));
+		$c->res->headers->cache_control('private, max-age=120');
+		return $c->render( json => { meetings => $json } )
+	    } else {
+		$c->res->code(500);
+		$json = { message => $dom->at('ResponseCode')->all_text };
+		return $c->render( json => $json )
+	    }
+	}	    
+    }
+
+    return $c->render( json => { action => $action } )
+};
+
+post '/item/*id' => sub {
+    my $c = shift;
+    app->log->info( dumper $c->req->params->to_hash );
+    return $c->render( json => $c->req->params->to_hash );
+};
+
 get '/item/*id' => sub {
     my $c = shift;
 
@@ -184,7 +245,7 @@ get '/item/*id' => sub {
     my $tx = $c->get_ews('outlook/item');
     my $dom = $tx->res->dom;
 
-    app->log->info($tx->res->is_success);
+    # app->log->info($tx->res->is_success);
     
     for ($c->stash('format')) {
 	/xml/i && do {
@@ -225,8 +286,10 @@ sub xml_to_hash {
     my $s = sub { 
 	my $dom = shift->to_string;
 	for ($dom) {
-	    s/<\w+?:/</g;
-	    s/<\/\w+?:/<\//g;
+	    # s/<\w+?:(.)/<\l$1/g;
+	    # s/<\/\w+?:(.)/<\/\l$1/g;
+	    s/<\w+?:(.)/<$1/g;
+	    s/<\/\w+?:(.)/<\/$1/g;
 	}
 	return xml2hash $dom;
     };
