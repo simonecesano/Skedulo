@@ -1,14 +1,18 @@
 % layout 'default';
 <div id="landing" class="container-fluid">
   Hello <%= session('given_name') %>
-  <a href="<%= url_for('/meet/me') %>">meetings</a>
+  <div><a href="<%= url_for('/login') %>">login</a></div>
+  <div><a href="<%= url_for('/meet/me') %>">meetings</a></div>
+  <div><pre id="console"><%= url_for('/setup/calendar') %></pre></div>
 </div>
 <script>
   $(function(){
-      fetch("<%= url_for('/setup/calendar') %>")
-	  .then(function(d){
-	      console.log('calendar is set up')
+      $.get("<%= url_for('/setup/calendar') %>")
+	  .then(d => {
+	      // $('#console').html(JSON.stringify(d, undefined, 4));
 	  })
-
+	  .catch(e => {
+	      console.log(e)
+	  })
   })
 </script>
