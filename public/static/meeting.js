@@ -1,6 +1,7 @@
 var _fix = function(o) {
     Object.keys(o).forEach(function(k, i) {
-	if(typeof o[k] === "object"){
+	if(o[k] && typeof o[k] === "object"){
+	    // console.log(o[k])
 	    _fix(o[k]);
 	} else {
 	    if (typeof o[k] === "string" && o[k].match(/\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z)/i)) {
@@ -56,6 +57,20 @@ var Meeting = function(d) {
 	required: d.RequiredAttendees.Attendee.length,
 	accepted: d.RequiredAttendees.Attendee.filter(e => { return e.ResponseType.match(/Accept/) }).length,
     }
+
+    d.HasUnconfirmedAttendees = d.AttendeeStatus.accepted < d.AttendeeStatus.required;
+    d.ResponseNeeded = d.MyResponseType.match(/Unknown|NoResponseReceived/i)
+					      
+    if (d.IsCancelled) {
+	d.MeetingClass = "canceled"
+    } else if (d.IsMine && (d.AttendeeStatus.accepted < d.AttendeeStatus.required)) {
+	d.MeetingClass = "unconfirmed"
+    } else if (d.ConflictingMeetingCount > 0) {
+	d.MeetingClass = "conflict"
+    } else if (d.MyResponseType.match(/Unknown|NoResponseReceived/i)) {
+	d.MeetingClass = "responseneeded"
+    }
+    
     d.__proto__ = this.__proto__;
     
     return d;
