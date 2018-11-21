@@ -1,0 +1,41 @@
+  <div class="row meeting {{ MyResponseType }} state{{ AppointmentState }}" id="{{ md5 ItemId.Id }}">
+    <div class="subject col-12">
+      <a href="/item/{{ ItemId.Id }}"><h3>
+	  {{#if IsMine }}
+	  <i style="transform: rotate(-45deg);" class="fas fa-arrow-circle-up"></i>
+	  {{else}}
+	  <i style="transform: rotate(135deg);" class="fas fa-arrow-circle-up"></i>
+	  {{/if}}
+	  {{ Subject }}
+      </h3></a>
+    </div>
+    {{#if IsMine }}
+    <div class="organizer col-12">Organized by you</div>
+    {{else}}
+    <div class="organizer col-12">{{ Organizer.Mailbox.Name }}</div>
+    {{/if}}
+    <div class="organizer col-12">{{ RequiredAttendeesList }}</div>
+    <span class="start col-6">{{ moment-format Start 'DD MMM, ddd HH:mm' }}</span>
+    {{#if IsMine }}
+    <span class="attendees col-3"><i class="fas fa-users"></i>&ensp;{{ AttendeeStatus.accepted }}/{{ AttendeeStatus.required }}</span>
+    {{#if HasConflicts }}
+    <span class="col-3"><i class="fas fa-bomb"></i>&ensp;{{ ConflictingMeetingCount }}</span>{{/if}}
+    {{/if}}
+    {{#if HasConflicts }}
+    <div class="conflicts col-12" style="margin-top:12px; padding-top:12px; border-top: thin solid grey">
+      <div><h4>conflicts</h4></div>
+      {{#each ConflictingMeetings.CalendarItem }}
+      <div class="meeting" data-id="{{ ItemId.Id }}" id="{{ md5 ItemId.Id }}">
+	<a href="/item/{{ ItemId.Id }}">{{ Subject }}</a><br/>
+	{{ moment-format Start 'DD MMM, ddd HH:mm' }}<br/>
+	<span class="organizer"></span><br/>
+	<span class="attendees"></span>	
+      </div>
+      {{/each}}
+    </div>
+    {{else}}
+    <div class="col-12">
+      <h4>no conflicts</h4>
+    </div>
+    {{/if}}
+  </div>      

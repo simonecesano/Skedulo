@@ -1,0 +1,56 @@
+% if ($size eq 'micro') {
+<div class="meeting row" data-id="{{ ItemId.Id }}" id="{{ md5 ItemId.Id }}">
+  <a href="/item/{{ ItemId.Id }}">{{ Subject }}</a><br/>
+  {{ moment-format Start 'DD MMM, ddd HH:mm' }}<br/>
+  <span class="organizer"></span><br/>
+  <span class="attendees"></span>	
+</div>
+% } elsif ($size eq 'tiny') {
+<div style="" class="row meeting" data-id="{{ ItemId.Id }}" id="{{ md5 ItemId.Id }}">
+  <div class="subject col-12">
+    {{#if IsMine }}
+    <i style="transform: rotate(-45deg);" class="fas fa-arrow-circle-up"></i>&emsp;
+    {{else}}
+    <i style="transform: rotate(135deg);" class="fas fa-arrow-circle-up"></i>&emsp;
+    {{/if}}
+      <a href="/item/{{ ItemId.Id }}">{{ Subject }}</a>
+  </div>
+  <div class="organizer col-12">{{ Organizer.Mailbox.Name }}</div>
+  <div class="start col-12">{{ moment-format Start 'DD MMM, ddd HH:mm'  }}</div>
+  <div class="spinner col-lg-2"><i class="fas fa-sync fa-spin"></i>&emsp;<span></span></div>
+</div>
+% } elsif ($size eq 'medium') {
+<div class="row meeting {{ MeetingClass }}" id="{{ md5 ItemId.Id }}"
+     style="">
+    <div class="subject col-12">
+      {{#if IsMine }}
+      <i style="transform: rotate(-45deg);" class="fas fa-arrow-circle-up"></i>&emsp;
+      {{else}}
+      <i style="transform: rotate(135deg);" class="fas fa-arrow-circle-up"></i>&emsp;
+      {{/if}}
+      <a href="/item/{{ ItemId.Id }}">{{ Subject }}</a>
+    </div>
+    <div class="organizer col-12">{{ Organizer.Mailbox.Name }}</div>
+    <div class="start col-8">{{ moment-format Start 'DD MMM, ddd HH:mm'  }}</div>
+    <div class="col-2">
+      {{#if ResponseNeeded }}
+      <i class="fas fa-question-circle"></i>&ensp;
+      {{else}}
+      <i class="fas fa-check-circle"></i>&ensp;
+      {{/if}}
+    </div>
+    {{#if AttendeeStatus}}
+    <div class="conflicts col-3"><i class="fas fa-bomb"></i>&ensp;<span>{{ ConflictingMeetingCount }}</span></div>
+    {{#if AttendeeStatus.required }}
+    <div class="attendees col-5"><i class="fas fa-users"></i>&ensp;
+      <span> {{ AttendeeStatus.accepted }} / {{ AttendeeStatus.required }}</span>
+    </div>
+    {{else}}
+    <div class="attendees col-5"><i class="fas fa-user"></i>&ensp;</div>
+    {{/if}}
+    {{else}}
+    <div class="spinner col-lg-12"><i class="fas fa-sync fa-spin"></i>&emsp;<span></span></div>
+    {{/if}}
+  </div>
+</div>
+% }

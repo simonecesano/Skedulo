@@ -1,0 +1,41 @@
+<div class="row meeting main {{ MyResponseType }} state{{ AppointmentState }}" id="{{ md5 ItemId.Id }}">
+  <div class="subject col-12">
+    <a href="/item/{{ ItemId.Id }}"><h3>
+	{{#if IsMine }}
+	<i style="transform: rotate(-45deg);" class="fas fa-arrow-circle-up"></i>
+	{{else}}
+	<i style="transform: rotate(135deg);" class="fas fa-arrow-circle-up"></i>
+	{{/if}}
+	{{ Subject }}
+    </h3></a>
+  </div>
+  {{#if IsMine }}
+  <div class="organizer col-12">Organized by you</div>
+  {{else}}
+  <div class="organizer col-12">{{ Organizer.Mailbox.Name }}</div>
+  {{/if}}
+  <div class="organizer col-12">{{ RequiredAttendeesList }}</div>
+  <div class="start col-6">{{ moment-format Start 'DD MMM, ddd HH:mm' }}</div>
+  {{#if HasConflicts }}
+  <div class="col-3"><i class="fas fa-bomb"></i>&ensp;{{ ConflictingMeetingCount }}</div>
+  {{/if}}
+  {{#if IsMine }}
+  <div class="attendees col-3"><i class="fas fa-users"></i>&ensp;{{ AttendeeStatus.accepted }} / {{ AttendeeStatus.required }}</div>
+  {{/if}}
+</div>
+{{#if HasConflicts }}
+<div class="conflicts row" style="margin-top:12px; padding-top:12px;">
+  <div class="col-12 header">
+    <h4>conflicts</h4>
+  </div>
+</div>
+{{#each ConflictingMeetings.CalendarItem }}
+%= include 'handlebars/meeting_small', format => 'hbs', size => 'tiny';
+{{/each}}
+{{else}}
+<div class="conflicts row" style="margin-top:12px; padding-top:12px; border-top: thin solid grey">
+<div class="col-12 header">
+  <h4>no conflicts</h4>
+</div>
+</div>
+{{/if}}
