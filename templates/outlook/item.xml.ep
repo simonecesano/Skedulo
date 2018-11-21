@@ -22,7 +22,7 @@
 	<t:FieldURI FieldURI="calendar:AdjacentMeetings" />
 	<t:FieldURI FieldURI="item:LastModifiedTime" />
 	<t:FieldURI FieldURI="item:DateTimeReceived" />
-	<t:FieldURI FieldURI="calendar:UID" />
+	<t:FieldURI FieldURI="calendar:IsCancelled" />
       </t:AdditionalProperties>
     </m:ItemShape>
     <m:ItemIds>
