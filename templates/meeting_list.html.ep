@@ -1,16 +1,10 @@
 % layout 'default';
 <style>
-  td { white-space: nowrap }
-  td.subject { white-space: normal }
-  .Accept, .state0, .state7 { display: none }
-  .Organizer .organizer  { color: rgb(0, 0, 0, 128);  }
-div.meeting { border-bottom: thin solid grey; padding: 4px  }
-  .conflicts, .attendees { display: none }
-  a { color: black }
-  .container-fluid { padding-top: 32px }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.10.0/js/md5.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+    <script src="/static/handlebars-helpers.js"></script>    
+
 %= include 'navbar';
 <div class="container-fluid">
   <div class="row" style="">
@@ -18,74 +12,32 @@ div.meeting { border-bottom: thin solid grey; padding: 4px  }
     </div>
   </div>
 </div>
-    <script>
-Handlebars.registerHelper('eq', function(a, b, opts) {
-    if(a === b) { 
-        return opts.fn(this);
-    } else {
-        return opts.inverse(this);
-    }
-});
-Handlebars.registerHelper('match', function(a, b, opts) {
-    var r = new RegExp(b, "i");
-    if(a.match(r)) { 
-        return opts.fn(this);
-    } else {
-        return opts.inverse(this);
-    }
-});
-Handlebars.registerHelper('moment-format', function() {
-    var date = arguments[0], format = arguments[1], timezone = arguments[2];
-    date = moment(date)
-    
-    if (typeof timezone == 'string') {
-	return date.tz(timezone).format(format);
-    } else {
-	return date.format(format);
-    }
-});
-  Handlebars.registerHelper('md5', function(string) {
-      return md5(string);
-  });
+%= include 'bottom_bar';
+<script>
   $(function(){
       var url = new URI;
       $.get(url.suffix('json').toString())
 	  .then(function(d){
 	      d = new Calendar(d);
-	      var source   = document.getElementById("entry-template").innerHTML;
+	      var source   = document.getElementById("list-template").innerHTML;
 	      var template = Handlebars.compile(source);
 	      $('#meetings').html(template(d));
 	      console.log(d);
 	      return d;
 	  })
 	  .then(function(d){
-	      d.meetings
-		  .filter(function(e){
-		      return true || e.MyResponseType.match(/NoResponseReceived/i) || e.MyResponseType.match(/Tentative/i)
-		  })
-		  .forEach(function(e, i){
-		      $.get('/item/' + e.ItemId.Id + '?format=json')
-			  .then(function(d){
-			      $('#' + md5(d.ItemId.Id) + ' .conflicts span').html(d.ConflictingMeetingCount).parent().show()
-			      $('#' + md5(d.ItemId.Id) + ' .spinner').hide()
-			  })
-			  .catch(e => {
-			      console.log(e);
-			  })
-		  })
 	      return d;
 	  })
 	  .then(function(d){
 	      d.meetings
-		  .filter(function(e){
-		      return true || e.MyResponseType.match(/Organizer/i)
-		  })
 		  .forEach(function(e, i){
 		      $.get('/item/' + e.ItemId.Id + '?format=json')
 			  .then(function(d){
 			      d = new Meeting(d);
-			      $('#' + md5(d.ItemId.Id) + ' .attendees span').html([ d.AttendeeStatus.accepted, d.AttendeeStatus.required ].join(' / ')).parent().show()
-			      $('#' + md5(d.ItemId.Id) + ' .spinner').hide()
+			      var source   = document.getElementById("entry-template").innerHTML;
+			      var template = Handlebars.compile(source);
+			      var t = template(d);
+			      $('#' + md5(d.ItemId.Id)).replaceWith(t)
 			  })
 		  })
 	      return d;
@@ -95,28 +47,11 @@ Handlebars.registerHelper('moment-format', function() {
 	  })
   })
 </script>
-<script id="entry-template" type="text/x-handlebars-template">
+<script id="list-template" type="text/x-handlebars-template">
   {{#each meetings}}
-  <div class="row meeting {{ MyResponseType }} state{{ AppointmentState }}" id="{{ md5 ItemId.Id }}">
-    <div>
-      <div class="subject col-12">
-	{{#if IsMine }}
-	<i style="transform: rotate(-45deg);" class="fas fa-arrow-circle-up"></i>&emsp;
-	{{else}}
-	<i style="transform: rotate(135deg);" class="fas fa-arrow-circle-up"></i>&emsp;
-	{{/if}}
-	<a href="/item/{{ ItemId.Id }}">{{ Subject }}</a>
-      </div>
-      <div class="organizer col-12">{{ Organizer.Mailbox.Name }}</div>
-      <div class="start col-12">{{ moment-format Start 'DD MMM, ddd HH:mm'  }}</div>
-      <div class="spinner col-lg-2"><i class="fas fa-sync fa-spin"></i>&emsp;<span></span></div>
-      {{#if NeedsWork }}
-      <div class="conflicts col-lg-2"><i class="fas fa-bomb"></i>&emsp;<span></span></div>
-      {{/if}}
-      {{#if IsMine }}
-      <div class="attendees col-lg-2"><i class="fas fa-users"></i>&emsp;<span></span></div>
-      {{/if}}
-    </div>
-  </div>
+  %= include 'handlebars/meeting_small', format => 'hbs', size => 'medium';
   {{/each}}
+</script>
+<script id="entry-template" type="text/x-handlebars-template">
+  %= include 'handlebars/meeting_small', format => 'hbs', size => 'medium';
 </script>
