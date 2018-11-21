@@ -1,4 +1,6 @@
 #!/usr/bin/env perl
+use FindBin qw($Bin);
+use lib "$Bin/lib";
 use Mojolicious::Lite;
 use XML::LibXML::PrettyPrint;
 use XML::LibXML;
@@ -9,11 +11,17 @@ use Date::Parse;
 use DateTime;
 
 use Mojo::Util qw/dumper/;
+use CHI;
+use DBI;
 
 plugin 'Config';
 
 push @{app->static->paths} => './static';
 
+plugin 'CHI' => { default => { driver => 'DBI',
+			       dbh => DBI->connect("dbi:SQLite:dbname=$Bin/cache.db"),
+			       global => 1,
+			       expires_in => 3600 } };
 
 hook (before_dispatch => sub {
 	  my $c = shift;
@@ -312,9 +320,3 @@ __DATA__
 To learn more, you can browse through the documentation
 <%= link_to 'here' => '/perldoc' %>.
 
-@@ layouts/default.html.ep
-<!DOCTYPE html>
-<html>
-  <head><title><%= title %></title></head>
-  <body><%= content %></body>
-</html>
