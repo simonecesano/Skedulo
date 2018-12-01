@@ -48,8 +48,6 @@ hook (before_dispatch => sub {
 
 hook (before_render => sub {
 	  my $c = shift;
-	  
-	  # $c->app->log->info($c->req->url);
 	  return $c;
       });
 
@@ -75,6 +73,56 @@ get '/meet/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } =
 get '/item/*id' => { controller => 'Meetings', action => 'calendar_item' };
 
 post '/item/*id' => { controller => 'Meetings', action => 'calendar_action' };
+
+get '/load/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
+    my $c = shift;
+    $c->set_dates();
+    $c->set_user();
+
+    return $c->render(template => 'load')
+	    
+};
+
+get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
+    my $c = shift;
+    $c->set_dates();
+    $c->set_user();
+
+    if ($c->stash('format') =~/(^$)|(html$)/) {
+	return $c->render(template => 'freebusy')
+    }
+
+    my $tx = $c->get_ews('outlook/freebusy');
+    my $dom = $tx->res->dom;
+
+    for ($c->stash('format')) {
+	/xml/i && do {
+	    return $c->render( text => pp_xml($dom) )
+	};
+	/json/i && do {
+	    my $json;
+	    if ($tx->res->is_success) {
+		$json = xml_to_hash($dom->find('MergedFreeBusy'));
+		return $c->render( json => { freebusy => $json->[0]->{content} } )
+	    } else {
+		$c->res->code(500);
+		$json = { message => $dom->at('ResponseCode')->all_text };
+		return $c->render( json => $json )
+	    }
+	}	    
+    }
+};
+
+get '/timezones' => sub {
+    my $c = shift;
+
+    my $tx = $c->get_ews('outlook/get_timezones');
+    
+    my $dom = $tx->res->dom;
+
+    return $c->render( text => pp_xml($dom) )
+};
+
 
 app->start;
 
