@@ -1,0 +1,11 @@
+<nav class="navbar fixed-bottom navbar-expand-sm navbar-dark bg-dark">
+  <a class="navbar-brand" href="#">
+    <i class="fa fa-question-circle" aria-hidden="true"></i>
+  </a>
+  <a class="navbar-brand" href="#">
+    <i class="fas fa-plus-circle"></i>
+  </a>
+  <a class="navbar-brand" href="#">
+    <i class="fas fa-cog"></i>
+  </a>
+</nav>

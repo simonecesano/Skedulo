@@ -1,0 +1,39 @@
+* { font-family: Lato, sans }
+
+a { color: black }
+.container-fluid { padding-top: 28px }
+
+div.meeting {
+    border-left: 12px solid #b2df8a ;
+    padding: 4px;
+}
+
+div.meeting:nth-child(odd) {
+    background-color: #eeeeee
+}
+div.meeting.canceled { border-left: 12px solid #a6cee3 }
+
+div.meeting.conflict { border-left: 12px solid #b61516 }
+
+div.meeting.responseneeded { border-left: 12px solid #ff7f00 }
+
+div.meeting.unconfirmed { border-left: 12px solid #377eb8 }
+
+div.meeting.main {
+    padding: 4px;
+    border-left: none;
+    background-color: white;
+    border-bottom:none
+}
+
+.header {
+    background-color: black;
+    color: white;
+    padding-top: 6px
+}
+    
+h3 { font-size: 1.4em }
+h4 { display: inline-block; font-size: 1.2em }
+
+.navbar-nav.fixed-bottom > li > a {padding-top:5px !important; padding-bottom:5px !important;}
+.navbar {min-height:32px !important}

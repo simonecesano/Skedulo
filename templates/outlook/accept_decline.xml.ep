@@ -1,0 +1,30 @@
+% layout 'outlook/header', format => 'xml';
+% content_for body => begin
+% if (param('action') eq 'cancel') {
+<m:DeleteItem DeleteType="MoveToDeletedItems" SendMeetingCancellations="SendToAllAndSaveCopy">
+  <m:ItemIds>
+    <t:ItemId Id="<%= stash('id') %>" />
+  </m:ItemIds>
+</m:DeleteItem>
+% } elsif (param('action') eq 'decline') {
+<m:CreateItem MessageDisposition="SendAndSaveCopy">
+  <m:Items>
+    <t:DeclineItem>
+      <t:ReferenceItemId Id="<%= stash('id') %>"/>
+      % if (param('mailtext')) {
+      <t:Body BodyType="Text"><%= param('mailtext') %></t:Body>
+      % }
+    </t:DeclineItem>
+  </m:Items>
+</m:CreateItem>
+% } elsif (param('action') eq 'accept') {
+<m:CreateItem MessageDisposition="SendAndSaveCopy">
+  <m:Items>
+    <t:AcceptItem>
+      <t:ReferenceItemId Id="<%= stash('id') %>"/>
+    </t:AcceptItem>
+  </m:Items>
+</m:CreateItem>
+% }
+% end
+
