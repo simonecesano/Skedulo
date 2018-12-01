@@ -16,6 +16,7 @@
 	  integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
     <link href="https://fonts.googleapis.com/css?family=Lato" rel="stylesheet">
     <script src="/static/meeting.js"></script>
+    <script src="/static/jquery.serializejson.js"></script>
     <link href="/static/skedulo.css" rel="stylesheet">
   </head>
   <body>
@@ -25,5 +26,4 @@
       </div>
     </div>
   </body>
-
 </html>
