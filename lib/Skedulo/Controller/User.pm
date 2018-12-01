@@ -13,7 +13,6 @@ sub setup_folder {
 
     $c->app->log->info($url->userinfo);
     $c->app->log->info($c->cookie('user'));
-    $c->app->log->info(dumper $c->session);
 
     my $xml = $c->render_to_string(template => 'outlook/folder_search', format => "xml");
     my $tx = $ua->post($url => {'Content-Type' => 'text/xml', 'Accept-Encoding' => 'None' } => $xml);
