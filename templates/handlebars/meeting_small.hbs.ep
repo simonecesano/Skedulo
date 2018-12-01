@@ -20,7 +20,7 @@
   <div class="spinner col-lg-2"><i class="fas fa-sync fa-spin"></i>&emsp;<span></span></div>
 </div>
 % } elsif ($size eq 'medium') {
-<div class="row meeting {{ MeetingClass }}" id="{{ md5 ItemId.Id }}"
+<div class="row meeting {{ MeetingClass }}" data-id="{{ ItemId.Id }}" id="{{ md5 ItemId.Id }}"
      style="">
     <div class="subject col-12">
       {{#if IsMine }}
