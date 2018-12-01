@@ -19,6 +19,7 @@
 	<t:FieldURI FieldURI="calendar:ConflictingMeetingCount" />
 	<t:FieldURI FieldURI="calendar:ConflictingMeetings" />
 	<t:FieldURI FieldURI="calendar:AdjacentMeetingCount" />
+	<t:FieldURI FieldURI="item:Categories" />	
 	<t:FieldURI FieldURI="calendar:AdjacentMeetings" />
 	<t:FieldURI FieldURI="item:LastModifiedTime" />
 	<t:FieldURI FieldURI="item:DateTimeReceived" />
