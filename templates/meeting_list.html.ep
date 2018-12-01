@@ -26,9 +26,6 @@
 	      return d;
 	  })
 	  .then(function(d){
-	      return d;
-	  })
-	  .then(function(d){
 	      d.meetings
 		  .forEach(function(e, i){
 		      $.get('/item/' + e.ItemId.Id + '?format=json')
@@ -38,6 +35,33 @@
 			      var template = Handlebars.compile(source);
 			      var t = template(d);
 			      $('#' + md5(d.ItemId.Id)).replaceWith(t)
+			      $('#' + md5(d.ItemId.Id)).attr('data-mine', d.IsMine ? 'mine' : 'received' );
+			      var e = $('#' + md5(d.ItemId.Id)).get(0);
+			      
+			      var hammertime = new Hammer(e);
+			      var url_t = new URITemplate("/<%= url_for('item') %>/{id}");
+			      
+			      hammertime.on('swiperight', function(ev) {
+				  var t = $(ev.target).hasClass('meeting') ? $(ev.target) : $(ev.target).closest('.meeting');
+				  var url = url_t.expand( { id: $(t).data('id') } );
+				  
+				  $.post( url.toString(), { action: t.data('mine').match(/mine/) ? 'null' : 'accept' } )
+				      .then(d => {
+				      	  console.log(d)
+				      });
+			      });
+			      hammertime.on('swipeleft', function(ev) {
+				  var t = $(ev.target).hasClass('meeting') ? $(ev.target) : $(ev.target).closest('.meeting');
+				  var url = url_t.expand( { id: $(t).data('id') } );
+				  
+				  t.hide(1000)
+				  $.post( url.toString(), { action: t.data('mine').match(/mine/) || t.hasClass('canceled')
+							    ? 'cancel' : 'decline' } )
+				      .then(d => {
+				      	  console.log(d)
+				      	  t.remove()
+				      });
+			      });
 			  })
 		  })
 	      return d;
