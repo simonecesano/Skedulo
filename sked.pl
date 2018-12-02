@@ -70,6 +70,41 @@ get '/setup/:folder' => { controller => 'User', action => 'setup_folder' };
     
 get '/meet/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => { controller => 'Meetings', action => 'meetings_list' };
 
+
+any '/make/me/:start/:end' => sub {
+    my $c = shift;
+
+    $c->params_to_stash(qw/subject location sensitivity body attendees[] categories[]/);
+
+    $c->app->log->info($c->stash('start'), $c->stash('end')); 
+    $c->stash('subject', '');
+    
+    my $tx = $c->get_ews('outlook/schedule_meeting');
+    
+    my $dom = $tx->res->dom;
+    
+    for ($c->stash('format')) {
+	/xml/i && do {
+	    return $c->render( text => pp_xml($dom) )
+	};
+	/json/i && do {
+	    my $json;
+	    if ($tx->res->is_success) {
+		$json = xml_to_hash($dom->at('ResponseCode'));
+		return $c->render( json => { freebusy => $json } )
+	    } else {
+		$c->res->code(500);
+		$c->app->log->info($dom);
+		$json = { message => $dom->at('ResponseCode')->all_text };
+		return $c->render( json => $json )
+	    }
+	}	    
+    }
+
+    
+};
+
+
 get '/item/*id' => { controller => 'Meetings', action => 'calendar_item' };
 
 post '/item/*id' => { controller => 'Meetings', action => 'calendar_action' };
@@ -78,9 +113,7 @@ get '/load/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } =
     my $c = shift;
     $c->set_dates();
     $c->set_user();
-
     return $c->render(template => 'load')
-	    
 };
 
 get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
@@ -88,10 +121,10 @@ get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7'
     $c->set_dates();
     $c->set_user();
 
-    if ($c->stash('format') =~/(^$)|(html$)/) {
-	return $c->render(template => 'freebusy')
-    }
+    if ($c->stash('format') =~/(^$)|(html$)/) { return $c->render(template => 'freebusy') }
 
+    $c->stash('interval', 60) unless $c->stash('interval');
+    
     my $tx = $c->get_ews('outlook/freebusy');
     my $dom = $tx->res->dom;
 
@@ -103,9 +136,15 @@ get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7'
 	    my $json;
 	    if ($tx->res->is_success) {
 		$json = xml_to_hash($dom->find('MergedFreeBusy'));
-		return $c->render( json => { freebusy => $json->[0]->{content} } )
+		return $c->render( json => {
+					    start => $c->stash('start'),
+					    interval => $c->stash('interval'),
+					    freebusy => $json->[0]->{content}
+					   } )
 	    } else {
 		$c->res->code(500);
+		# $c->app->log->info($dom);
+
 		$json = { message => $dom->at('ResponseCode')->all_text };
 		return $c->render( json => $json )
 	    }
@@ -116,10 +155,11 @@ get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7'
 get '/timezones' => sub {
     my $c = shift;
 
-    my $tx = $c->get_ews('outlook/get_timezones');
     
+    my $tx = $c->get_ews('outlook/get_timezones');
     my $dom = $tx->res->dom;
 
+    $c->res->headers->content_type('text/xml');
     return $c->render( text => pp_xml($dom) )
 };
 
