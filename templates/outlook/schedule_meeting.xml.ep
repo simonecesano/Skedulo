@@ -1,0 +1,92 @@
+% layout 'outlook/header', format => 'xml';
+% content_for header => begin
+<t:TimeZoneContext>
+% if (1) {
+<t:TimeZoneDefinition Id="Central Europe Standard Time" Name="(UTC+01:00) Belgrade, Bratislava, Budapest, Ljubljana, Prague">
+  <t:Periods>
+    <t:Period Bias="-PT1H" Id="trule:Microsoft/Registry/Central Europe Standard Time/1-Standard" Name="Standard"/>
+    <t:Period Bias="-PT2H" Id="trule:Microsoft/Registry/Central Europe Standard Time/1-Daylight" Name="Daylight"/>
+  </t:Periods>
+  <t:TransitionsGroups>
+    <t:TransitionsGroup Id="0">
+      <t:RecurringDayTransition>
+        <t:To Kind="Period">trule:Microsoft/Registry/Central Europe Standard Time/1-Daylight</t:To>
+        <t:TimeOffset>PT2H</t:TimeOffset>
+        <t:Month>3</t:Month>
+        <t:DayOfWeek>Sunday</t:DayOfWeek>
+        <t:Occurrence>-1</t:Occurrence>
+      </t:RecurringDayTransition>
+      <t:RecurringDayTransition>
+        <t:To Kind="Period">trule:Microsoft/Registry/Central Europe Standard Time/1-Standard</t:To>
+        <t:TimeOffset>PT3H</t:TimeOffset>
+        <t:Month>10</t:Month>
+        <t:DayOfWeek>Sunday</t:DayOfWeek>
+        <t:Occurrence>-1</t:Occurrence>
+      </t:RecurringDayTransition>
+    </t:TransitionsGroup>
+  </t:TransitionsGroups>
+  <t:Transitions>
+    <t:Transition><t:To Kind="Group">0</t:To></t:Transition>
+  </t:Transitions>
+</t:TimeZoneDefinition>
+% } else {
+<t:TimeZoneDefinition Id="UTC" Name="(UTC) Coordinated Universal Time">
+  <t:Periods>
+      <t:Period Bias="PT0H" Id="trule:Microsoft/Registry/UTC/1-Standard" Name="Standard"/>
+    </t:Periods>
+    <t:TransitionsGroups>
+      <t:TransitionsGroup Id="0">
+        <t:Transition>
+          <t:To Kind="Period">trule:Microsoft/Registry/UTC/1-Standard</t:To>
+        </t:Transition>
+      </t:TransitionsGroup>
+    </t:TransitionsGroups>
+    <t:Transitions>
+      <t:Transition>
+        <t:To Kind="Group">0</t:To>
+      </t:Transition>
+    </t:Transitions>
+  </t:TimeZoneDefinition>
+% }
+ </t:TimeZoneContext>
+% end
+% content_for body => begin
+% if (@$attendees) {
+<m:CreateItem SendMeetingInvitations="SendToAllAndSaveCopy">
+% } else {
+<m:CreateItem SendMeetingInvitations="SendToNone">
+% }
+  <m:SavedItemFolderId>
+    <t:DistinguishedFolderId Id="calendar"/>
+  </m:SavedItemFolderId>
+  <m:Items>
+    <t:CalendarItem>
+      <t:Categories>
+	% for my $k (@$categories) {
+	<t:String>block</t:String>
+	% }
+      </t:Categories>
+      <t:Subject><%= $subject %></t:Subject>
+      <t:Body BodyType="HTML"><%= $body %></t:Body>
+      <t:Start><%= $start %></t:Start>
+      <t:End><%= $end %></t:End>
+      <t:Location><%= $location %></t:Location>
+      <t:Sensitivity><%= $sensitivity || 'Private' %></t:Sensitivity>
+      % if (@$attendees) {
+      <t:RequiredAttendees>
+	% for my $a (@$attendees) {
+        <t:Attendee>
+          <t:Mailbox>
+            <t:EmailAddress><%= $a %></t:EmailAddress>
+          </t:Mailbox>
+        </t:Attendee>
+	% }
+      </t:RequiredAttendees>
+      % }
+      <t:StartTimeZone Id="UTC" />
+      <t:EndTimeZone Id="UTC" />
+    </t:CalendarItem>
+  </m:Items>
+</m:CreateItem>
+% end
+
