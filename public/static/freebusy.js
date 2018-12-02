@@ -20,25 +20,33 @@ FreeBusy.prototype.slice = function (from, to) {
 };
 
 FreeBusy.prototype.time = function(slot){
-    return moment(this.start).add(slot * this.interval, 'minutes')
+    return moment(this.start).add(slot * this.interval, 'minutes').format()
 }
 
-FreeBusy.prototype.slots = function(...a){
-    var tentative = typeof a[a.length - 1] == 'boolean' ? a.pop() : false;
-    var length = a[0] ? a[0] : 1;
+FreeBusy.prototype.asSlots = function(){
+    var p = '';
+    var a = [];
+    var k = 0;
 
-    var re = tentative ?
-	new RegExp(['[0-1]{', length, ',}'].join(''), 'g')
-	: new RegExp(['0{', length, ',}'].join(''), 'g');
-
-    var r = [];
-
-    while ((match = re.exec(this.freebusy)) != null) {
-	r.push([ this.time(match.index), this.time(match.index + match[0].length) ]);
-    }
-    return r;
-};
-
+    this.freebusy
+    	.replace(/[123456789]/g, '1')
+	.split('')
+	.forEach(e => {
+	    if (e != p) {
+		k = a.length ? a[a.length-1][2] + a[a.length-1][1] : 0;
+		a.push([ e, k, 1 ])
+	    } else {
+		a[a.length-1][2]++
+	    }
+	    p = e;
+	})
+    
+    a = a.map(e => {
+	return { start: this.time(e[1]), end: this.time(e[1] + e[2]), free: e[0].match(/0/) ? true : false }
+    })
+    
+    return a;
+}
 
 FreeBusy.prototype.similar = function(f){
     return this.freebusy.length == f.freebusy.length && this.start.format() == f.start.format();
@@ -100,4 +108,20 @@ FreeBusy.combine = function(){
 	}, []).join('');
     
     return new FreeBusy(args[0].start, fb, args[0].interval)
+}
+
+FreeBusy.prototype.loadFactor = function(a){
+    if (a) {
+	var h = a.freebusy.split('');
+	return this.freebusy.split('')
+	    .filter(e => {
+		var b = h.shift() || 0;
+		return (e == 0 && b == 0)
+	    })
+	    .length
+    } else {
+	return this.freebusy.split('')
+	    .filter(e => { return e == 0 })
+	    .length
+    }
 }
