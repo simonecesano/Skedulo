@@ -64,6 +64,24 @@ sub register {
 		     $c->stash('user', $c->session('user')) if $c->stash('who') eq 'me';
 		     return $c;
 		 });
+    $app->helper('params_to_stash' => sub {
+		     my $c = shift;
+		     my @params = @_;
+		     
+		     for (@params) {
+			 next if defined $c->stash($_);
+			 s/\{\}$// && do {
+			     $c->stash($_, $c->param($_) || {});
+			     next;
+			 };
+			 s/\[\]$// && do {
+			     $c->stash($_, $c->param($_) || []);
+			     next;
+			 };
+			 $c->stash($_, $c->param($_) || '');
+		     }
+		     return $c;
+		 });
 }
 
 1
