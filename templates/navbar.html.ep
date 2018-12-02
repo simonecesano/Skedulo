@@ -9,7 +9,7 @@
         <a class="nav-link" href="<%= url_for('/meet') %>">Meeting list</span></a>
           </li>
       <li class="nav-item">
-        <a class="nav-link" href="#">Planning overview</a>
+        <a class="nav-link" href="<%= url_for('/load') %>">Planning overview</a>
       </li>
       <li class="nav-item">
         <a class="nav-link" href="#">Schedule a meeting</a>
