@@ -31,6 +31,7 @@
 		      $.get('/item/' + e.ItemId.Id + '?format=json')
 			  .then(function(d){
 			      d = new Meeting(d);
+			      console.log(d);
 			      var source   = document.getElementById("entry-template").innerHTML;
 			      var template = Handlebars.compile(source);
 			      var t = template(d);
