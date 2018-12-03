@@ -11,7 +11,7 @@ sub setup_folder {
     $url->userinfo(join ':', $c->session('user'), $c->session('password'));
     my $ua  = Mojo::UserAgent->new();
 
-    $c->app->log->info($url->userinfo);
+    # $c->app->log->info($url->userinfo);
     $c->app->log->info($c->cookie('user'));
 
     my $xml = $c->render_to_string(template => 'outlook/folder_search', format => "xml");
@@ -31,9 +31,14 @@ sub post_login {
 
     if ($c->param('user') && $c->param('password')) {
 	$c->stash('name', $c->param('user'));
+	# $c->app->log->info($c->param('user'), $c->param('password'));
+
 	my $tx = $c->get_ews('outlook/whois', $c->param('user'), $c->param('password'));
+
 	my $dom = $tx->res->dom;
-	$c->app->log->info($dom);
+
+	# $c->app->log->info($dom);
+
 	if ($tx->res->is_success) {
 	    
 	    my $json = xml_to_hash($dom->at('Contact'));

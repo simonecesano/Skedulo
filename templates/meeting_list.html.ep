@@ -22,7 +22,7 @@
 	      var source   = document.getElementById("list-template").innerHTML;
 	      var template = Handlebars.compile(source);
 	      $('#meetings').html(template(d));
-	      console.log(d);
+	      // console.log(d);
 	      return d;
 	  })
 	  .then(function(d){
@@ -31,7 +31,7 @@
 		      $.get('/item/' + e.ItemId.Id + '?format=json')
 			  .then(function(d){
 			      d = new Meeting(d);
-			      console.log(d);
+			      // console.log(d);
 			      var source   = document.getElementById("entry-template").innerHTML;
 			      var template = Handlebars.compile(source);
 			      var t = template(d);
