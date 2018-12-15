@@ -12,10 +12,10 @@
         <a class="nav-link" href="<%= url_for('/load') %>">Planning overview</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="#">Schedule a meeting</a>
+        <a class="nav-link" href="<%= url_for('/setup') %>">Schedule a meeting</a>
       </li>
       <li class="nav-item">
-        <a class="nav-link" href="#">Search for people</a>
+        <a class="nav-link" href="<%= url_for('/whois') %>">Search for people</a>
       </li>
     </ul>
   </div>
