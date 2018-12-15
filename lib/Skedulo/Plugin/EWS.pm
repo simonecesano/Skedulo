@@ -62,6 +62,7 @@ sub register {
     $app->helper('set_user' => sub {
 		     my $c = shift;
 		     $c->stash('user', $c->session('user')) if $c->stash('who') eq 'me';
+		     $c->stash('who', $c->session('user')) if $c->stash('who') eq 'me';
 		     return $c;
 		 });
     $app->helper('params_to_stash' => sub {
