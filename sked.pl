@@ -2,11 +2,6 @@
 use FindBin qw($Bin);
 use lib "$Bin/lib";
 use Mojolicious::Lite;
-# use XML::LibXML::PrettyPrint;
-# use XML::LibXML;
-# use XML::XML2JSON;
-# use XML::Hash::XS;
-# use XML::Hash;
 use Date::Parse;
 use DateTime;
 use Data::Dump qw/dump/;
@@ -15,14 +10,20 @@ use CHI;
 use DBI;
 use Skedulo::Util qw/pp_xml xml_to_hash/;
 
+use DateTime::Format::HTTP;
+use DateTime::Format::Strptime;
+use DateTime::Format::ISO8601;
+
 
 push @{app->static->paths} => './static';
 push @{app->routes->namespaces}, 'Skedulo::Controller';
 push @{app->plugins->namespaces}, 'Skedulo::Plugin';
 
+
+
 plugin 'Config';
 plugin 'EWS';
-
+plugin 'Localizer';
 
 sub startup {
     my $c = shift;
@@ -100,8 +101,6 @@ any '/make/me/:start/:end' => sub {
 	    }
 	}	    
     }
-
-    
 };
 
 
@@ -116,11 +115,14 @@ get '/load/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } =
     return $c->render(template => 'load')
 };
 
-get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
+get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
     my $c = shift;
+
     $c->set_dates();
     $c->set_user();
 
+    $c->app->log->info($c->stash('who'));
+    
     if ($c->stash('format') =~/(^$)|(html$)/) { return $c->render(template => 'freebusy') }
 
     $c->stash('interval', 60) unless $c->stash('interval');
@@ -143,8 +145,6 @@ get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7'
 					   } )
 	    } else {
 		$c->res->code(500);
-		# $c->app->log->info($dom);
-
 		$json = { message => $dom->at('ResponseCode')->all_text };
 		return $c->render( json => $json )
 	    }
@@ -152,17 +152,32 @@ get '/freebusy/:who/:start/:end' => { who => 'me', start => 'today', end => '+7'
     }
 };
 
-get '/timezones' => sub {
+
+
+get '/timezone'            => { controller => 'TimeZones', action => 'get_timezone' };
+
+get '/timezone/*location'  => { controller => 'TimeZones', action => 'get_timezone' };
+
+get '/latlon'              => { controller => 'TimeZones', action => 'get_latlon' };
+
+get '/latlon/*q'           => { controller => 'TimeZones', action => 'get_latlon' };
+
+get '/setup';
+
+get '/tz' => sub { my $c = shift; $c->stash('date' => DateTime->now) };
+
+
+
+get '/whois'        => { controller => 'User', action => 'get_whois' };
+
+get '/whois/*name'  => { controller => 'User', action => 'get_whois' };
+
+
+
+get '/help' => sub {
     my $c = shift;
-
-    
-    my $tx = $c->get_ews('outlook/get_timezones');
-    my $dom = $tx->res->dom;
-
-    $c->res->headers->content_type('text/xml');
-    return $c->render( text => pp_xml($dom) )
+    $c->stash('referrer', Mojo::URL->new($c->req->headers->referrer)->path =~ s/\///r );
 };
-
 
 app->start;
 
