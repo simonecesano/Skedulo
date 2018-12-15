@@ -1,0 +1,32 @@
+% layout 'default';
+%= include 'navbar';
+<div class="col">
+%  for ($referrer) {
+%# -----------------------------------------  
+%  /^meet\b/ && do {
+<h3>the meeting setup view</h3>
+We are setting up
+% last; }; 
+%# -----------------------------------------
+% /^setup/ && do {
+<h3>the meeting setuo view</h3>
+We are setting up
+% last; };
+%# -----------------------------------------
+% /^load/ && do {
+<h3>the load view</h3>
+The load window does things
+% last; };
+%# -----------------------------------------
+% /^tz/ && do {
+<h3>the preferences pane</h3>
+Decide what you like
+% last; };
+%# -----------------------------------------
+% /.*/ && do {
+<h3>generic help</h3>
+This is what you display anyway
+% last };
+% };
+</div>
+%= include 'bottom_bar';
