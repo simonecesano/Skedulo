@@ -55,7 +55,7 @@
   <m:MailboxDataArray>
     <t:MailboxData>
       <t:Email>
-        <t:Address>simone.cesano@adidas.com</t:Address>
+        <t:Address><%= stash('who') %></t:Address>
       </t:Email>
       <t:AttendeeType>Organizer</t:AttendeeType>
       <t:ExcludeConflicts>false</t:ExcludeConflicts>
