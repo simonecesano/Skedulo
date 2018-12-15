@@ -62,4 +62,29 @@ sub post_login {
     }
 };
 
+sub get_whois {
+    my $c = shift;
+
+    if ($c->param('query')){
+	$c->stash('name', $c->param('query'));
+	my $tx = $c->get_ews('outlook/whois');
+	my $dom = $tx->res->dom;
+
+	if ($c->param('format') eq 'xml') {
+	    return $c->render( text => $tx->res->dom);
+	}
+	
+	my $json = xml_to_hash($dom->find('Resolution'));
+	$json = [ map {
+	    { value => $_->{Contact}->{DisplayName}, data => $_ }
+	} @$json ];
+	
+	$json = { "suggestions" =>  $json };
+	
+	return $c->render( json => $json )
+    } else {
+	return $c->render( template => 'whois' )
+    }
+};
+
 1;
