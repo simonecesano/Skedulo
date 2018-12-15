@@ -14,7 +14,7 @@ FreeBusy.prototype.slot = function (time) {
 
 FreeBusy.prototype.slice = function (from, to) {
     var s = this.slot(from);
-    var e = this.slot(to);
+    var e = to ? this.slot(to) : s + 1;
 
     return this.freebusy.substring(s, e);
 };
