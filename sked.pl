@@ -16,6 +16,8 @@ use DateTime::Format::ISO8601;
 
 
 push @{app->static->paths} => './static';
+push @{app->static->paths} => './node_modules';
+
 push @{app->routes->namespaces}, 'Skedulo::Controller';
 push @{app->plugins->namespaces}, 'Skedulo::Plugin';
 
@@ -24,12 +26,7 @@ push @{app->plugins->namespaces}, 'Skedulo::Plugin';
 plugin 'Config';
 plugin 'EWS';
 plugin 'Localizer';
-
-sub startup {
-    my $c = shift;
-    $c->app->log->info('Starting...');
-    return $c
-}
+plugin 'TimeZones';
 
 plugin 'CHI' => { default => { driver => 'DBI',
 			       dbh => DBI->connect("dbi:SQLite:dbname=$Bin/cache.db"),
@@ -38,8 +35,12 @@ plugin 'CHI' => { default => { driver => 'DBI',
 
 hook (before_dispatch => sub {
 	  my $c = shift;
-
-	  unless (($c->req->url =~ /login|static/) || ($c->session('user') && $c->session('password'))) {
+	  
+	  unless (
+		  ('127.0.0.1' eq $c->tx->original_remote_address) || 
+		  ($c->req->url =~ /login|static/)                 ||
+		  ($c->session('user') && $c->session('password'))
+		 ) {
 	      return $c->redirect_to('/login');
 	  }
 	  
@@ -122,6 +123,8 @@ get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7'
     $c->set_user();
 
     $c->app->log->info($c->stash('who'));
+
+    $c->app->log->info(dump $c->req->cookies);
     
     if ($c->stash('format') =~/(^$)|(html$)/) { return $c->render(template => 'freebusy') }
 
@@ -137,26 +140,61 @@ get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7'
 	/json/i && do {
 	    my $json;
 	    if ($tx->res->is_success) {
-		$json = xml_to_hash($dom->find('MergedFreeBusy'));
+		my $fb = (xml_to_hash($dom->find('MergedFreeBusy')))->[0]->{content};
+		my $wp = (xml_to_hash($dom->find('WorkingPeriodArray')))->[0]->{WorkingPeriod};
+		
+		$c->app->log->info(dump $wp);
+		$wp->{days} = [ (split /\s+/, delete $wp->{DayOfWeek}) ]; # =~ s/ /, /gr;
+		$wp->{start} = mins_to_hour(delete $wp->{StartTimeInMinutes});
+		$wp->{end} = mins_to_hour(delete $wp->{EndTimeInMinutes});
+
+		$c->app->log->info(ref $c->stash('start'));
+		$c->app->log->info($c->stash('start'));
+		$c->app->log->info($c->stash('start')->format_cldr('yyyy-MM-ddThh:mm:ssZZZZZ'));
 		return $c->render( json => {
-					    start => $c->stash('start'),
+					    start => $c->stash('start')->format_cldr('yyyy-MM-ddThh:mm:ssZZZZZ'),
 					    interval => $c->stash('interval'),
-					    freebusy => $json->[0]->{content}
+					    freebusy => $fb,
+					    working_time => $wp
 					   } )
 	    } else {
 		$c->res->code(500);
-		$json = { message => $dom->at('ResponseCode')->all_text };
+		my $json = { message => $dom->at('ResponseCode')->all_text };
 		return $c->render( json => $json )
 	    }
 	}	    
     }
 };
 
+use POSIX qw/floor/;
+sub mins_to_hour {
+    my $m = shift;
+    my $h = floor($m / 60);
+    $m = $m % 60;
+    return sprintf '%02d:%02d', $h, $m;
+}
+
+get '/thing' => sub {
+    my $c = shift;
+
+    $c->stash('tz_info', $c->ews_tz_definition('UTC') );
+
+    $c->res->headers->content_type('text/plain');
+    $c->render(inline => '<%== $tz_info %>' )
+};
 
 
-get '/timezone'            => { controller => 'TimeZones', action => 'get_timezone' };
+get  '/timezone'            => { controller => 'TimeZones', action => 'get_timezone' };
 
-get '/timezone/*location'  => { controller => 'TimeZones', action => 'get_timezone' };
+get  '/timezone/*who'      => [ who  => qr/.*\@.+/ ] => { controller => 'TimeZones', action => 'get_timezone_for_user' };
+
+get  '/timezone/*location' => [ location => qr/\d+\.*\d+\,\d+\.*\d+/ ] => { controller => 'TimeZones', action => 'get_timezone' };
+
+get  '/timezone/*location' => { controller => 'TimeZones', action => 'get_timezone_for_location' };
+    
+post '/timezone' => { controller => 'TimeZones', action => 'set_timezone_for_user' };
+
+get '/timezones/ews' => { controller => 'TimeZones', action => 'timezones_ews' };
 
 get '/latlon'              => { controller => 'TimeZones', action => 'get_latlon' };
 
@@ -164,15 +202,12 @@ get '/latlon/*q'           => { controller => 'TimeZones', action => 'get_latlon
 
 get '/setup';
 
-get '/tz' => sub { my $c = shift; $c->stash('date' => DateTime->now) };
-
-
+# this is actually the working hours setup page
+get '/tz'           => sub { my $c = shift; $c->stash('date' => DateTime->now) };
 
 get '/whois'        => { controller => 'User', action => 'get_whois' };
 
 get '/whois/*name'  => { controller => 'User', action => 'get_whois' };
-
-
 
 get '/help' => sub {
     my $c = shift;
