@@ -1,22 +1,56 @@
-later.date.localTime();
+later.date.UTC();
 
 moment.prototype.getTime = moment.prototype.valueOf;
 
-var WorkDay = function(starts, ends, invert){
-    this.starts = starts;
-    this.ends   = ends;
-    this.invert = invert;
+var WorkDay = function(schedule){
+
+    var days = schedule.days.map(function(e) {
+	return parseInt(moment().day(e).format('d')) + 1;
+    });
+
+    this.starts = later.parse.recur()
+	.on(schedule.start).time()
+	.on(days).dayOfWeek()
+
+    this.ends = later.parse.recur()
+	.on(schedule.end).time()
+	.on(days).dayOfWeek()
+
+    this.tz = schedule.tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    this.invert = schedule.invert;
+
     return this;
 }
 
-WorkDay.prototype.schedule = function(start, end){
-    var a = later.schedule(this.starts).next(Infinity, start, end);
-    var b = later.schedule(this.ends).next(Infinity, start, end);
+WorkDay.parse = function(starts, ends, invert, tz){
+    var wd = new WorkDay({ start: '8:00', end: '18:00', days: ['Mon', 'Tue'] })
+    
+    wd.starts = later.parse.text(starts),
+    wd.ends   = later.parse.text(ends),
+    wd.invert = invert;
+    wd.tz = tz || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    return wd;
+}
+
+WorkDay.prototype.schedule = function(start, end, destTZ){
+    // if the start and end tz is different from the workday's
+    // fix start and end
+
+    destTZ = destTZ || Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    startF = moment(start).tz(this.tz);
+    endF   = moment(end).tz(this.tz);    
+    
+    var a = later.schedule(this.starts).next(Infinity, startF, endF);
+    var b = later.schedule(this.ends).next(Infinity, startF, endF);
     
     if (a[0] > b[0]) { a.unshift(start) }
 
-    var t = _.zip(a, b).map(e => { return { start: e[0], end: e[1], free: true } });
-
+    var t = _.zip(a, b) // combine the two schedules
+	.map(e => { return { start: e[0], end: e[1], free: true } });
+    
     var f = []
 
     t.reduce(function(a, e, i){
@@ -28,6 +62,12 @@ WorkDay.prototype.schedule = function(start, end){
 	return a;
     }, f)
 
+    f.forEach(e => {
+	e.start = WorkDay.mapTZ(e.start, this.tz, destTZ),
+	e.end =   WorkDay.mapTZ(e.end,   this.tz, destTZ),
+	e.free =  this.invert ? !e.free : e.free
+    })
+
     if (f[0].start > start) {
 	f.unshift({ start: start, end: f[0].start, free: (!f[0].free) });
     }
@@ -35,18 +75,27 @@ WorkDay.prototype.schedule = function(start, end){
     if (f[f.length-1].end < end) {
 	f.push({ start: f[f.length-1].end, end: end, free: (!f[f.length-1].free) });
     }
-    f.forEach(e => {
-	e.start = moment(e.start);
-	e.end = moment(e.end);	
-	e.free = this.invert ? !e.free : e.free
-    })
+
+
     return f;
 }
 
-WorkDay.prototype.freebusy = function(start, end, duration){
-    var t = this.schedule(start, end);
+WorkDay.prototype.freebusy = function(start, end, duration, destTZ){
+
+    duration = duration || WorkDay.duration || 60;
+    start    = start    || WorkDay.start    || moment().startOf('Day');
+    end      = end      || WorkDay.end      || moment().startOf('Day').add(7, 'days');
+    destTz   = destTZ   || WorkDay.destTZ   || Intl.DateTimeFormat().resolvedOptions().timeZone;
+    
+    var t = this.schedule(start, end, destTZ);
+    console.log(t);
     var a = t.map(e => {
 	var n = { free: e.free };
+	// check that everything is moment()
+
+	e.start = moment.isMoment(e.start) ? e.start : moment(e.start);
+	e.end   = moment.isMoment(e.end)   ? e.end   : moment(e.end);
+	
 	if (e.free) {
 	    n.start = e.start.clone().minute(Math.ceil(e.start.minute() / duration) * duration);
 	    n.end   = e.end.clone().minute(Math.floor(e.end.minute() / duration) * duration);
@@ -62,6 +111,15 @@ WorkDay.prototype.freebusy = function(start, end, duration){
     })
     return a.map(e => { return e.string }).join('')   
 }
+
+WorkDay.prototype.freebusyObj = function(start, end, duration, destTZ){
+    start    = start    || WorkDay.start    || moment().startOf('Day');
+    duration = duration || WorkDay.duration || 60;
+    
+    return new FreeBusy(start, this.freebusy(start, end, duration, destTZ), duration)
+};
+
+
 
 WorkDay.wcombine = function() {
     var args = [].slice.call(arguments)
@@ -86,7 +144,8 @@ WorkDay.wcombine = function() {
 WorkDay.combine = function() {
     var args = [].slice.call(arguments)
 
-    var duration = args.pop();
+    var duration = args.length == 5 ? args.pop() : 60;
+
     var end   = args.pop();
     var start = args.pop();    
 
@@ -104,3 +163,10 @@ WorkDay.combine = function() {
     return r.join('');
 }
 
+WorkDay.mapTZ = function(date, sourceTZ, destTZ) {
+    var noTZ   = moment(date).tz('UTC').format('YYYY-MM-DDTHH:mm:ss');
+    var fromTZ = moment.tz(noTZ, sourceTZ)
+    var toTZ   = moment.tz(fromTZ, destTZ);
+
+    return toTZ
+}
