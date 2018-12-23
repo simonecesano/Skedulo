@@ -3,6 +3,7 @@ package Skedulo::Plugin::EWS;
 use Mojo::Base 'Mojolicious::Plugin';
 use Date::Parse;
 use DateTime;
+use DateTime::Format::ISO8601;
 use Data::Dump qw/dump/;
 
 sub register {
@@ -35,6 +36,10 @@ sub register {
     $app->helper('set_dates' => sub {
 		     my $c = shift;
 		     my $start;
+		     my ($tz) = map { $_->value } grep { $_->name eq 'TZName' } @{$c->req->cookies};
+		     # needs a default
+		     $c->app->log->info($c->req->url);
+		     $c->app->log->info($tz);
 		     
 		     for (qw/start end/) {
 			 my $date;
@@ -54,6 +59,11 @@ sub register {
 			     # strptime
 			     $date = DateTime->from_epoch( epoch => str2time($c->stash($_)) );
 			 }
+			 $date->set_time_zone( $tz );
+			 # my $iso8601 = DateTime::Format::ISO8601->new;
+			 # $date->set_formatter($iso8601);
+			 $c->app->log->info($date);
+			 
 			 $c->stash($_, $date)
 		     }
 		     return $c;
