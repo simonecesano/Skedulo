@@ -30,9 +30,11 @@
   </body>
   <script>
     $(function(){
+	var tzOffset = (new Date).getTimezoneOffset();
 	var setTZ = function(){
-	    Cookies.set('TZOffset', (new Date).getTimezoneOffset());
+	    Cookies.set('TZOffset', tzOffset);
 	    Cookies.set('TZName', Intl.DateTimeFormat().resolvedOptions().timeZone);
+	    $.post("<%= url_for( '/timezone') %>", { tz: Intl.DateTimeFormat().resolvedOptions().timeZone } )
 	}
 	setTZ()
 	var intervalID = window.setInterval(setTZ, 60 * 1000);
