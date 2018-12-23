@@ -1,6 +1,6 @@
 function FreeBusy(start, freebusy, interval) {
     this.freebusy = freebusy;
-    this.start    = moment(start);
+    this.start    = moment.isMoment(start) ? start : moment(start);
     this.interval = interval;
     this.end = moment(this.start).add(this.freebusy.length * this.interval, 'minutes')
 
@@ -93,12 +93,24 @@ FreeBusy.prototype.combine = function() {
     this.freebusy = FreeBusy.combine(args).freebusy;
 }
 
+FreeBusy.prototype.toString = function(){
+    return this.freebusy
+}
+
+
 FreeBusy.combine = function(){
     var args = Array.isArray(arguments[0]) ?
 	arguments[0] : [].slice.call(arguments);
 
     var fb = args
-	.map(e => { return e.freebusy })
+	.map(e => {
+	    // return (typeof f === 'function') ?
+	    // 	e.freebusy(a[0].start,
+	    // 		   a[0].start.add(a[0].freebusy.length * a[0].interval, 'minutes'),
+	    // 		  )
+	    // 		   :
+	    return e.freebusy
+	})
 	.map(e => {  return e.split('') })
 	.reduce(function(acc, f){
 	    acc = f.map(function(e, i){
