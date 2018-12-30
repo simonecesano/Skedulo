@@ -1,26 +1,26 @@
 function FreeBusy(start, freebusy, interval) {
-    this.freebusy = freebusy;
-    this.start    = moment.isMoment(start) ? start : moment(start);
-    this.interval = interval;
-    this.end = moment(this.start).add(this.freebusy.length * this.interval, 'minutes')
+    this.freebusy = freebusy || '';
+    this.start    = new Date(start);
+    this.interval = interval || 60;
+
+    this.end = new Date(this.start.valueOf() + (this.freebusy.length * this.interval * 60 * 1000))
 
     return this;
 };
 
 FreeBusy.prototype.slot = function (time) {
-    var d = moment(time).diff(this.start, 'minutes');
+    var d = ((new Date(time)).valueOf() - this.start.valueOf()) / (60 * 1000);
     return Math.floor(d / this.interval);
 };
 
 FreeBusy.prototype.slice = function (from, to) {
     var s = this.slot(from);
     var e = to ? this.slot(to) : s + 1;
-
     return this.freebusy.substring(s, e);
 };
 
 FreeBusy.prototype.time = function(slot){
-    return moment(this.start).add(slot * this.interval, 'minutes').format()
+    return new Date(this.start.valueOf() + slot * this.interval * 60 * 1000)
 }
 
 FreeBusy.prototype.asSlots = function(){
@@ -49,7 +49,7 @@ FreeBusy.prototype.asSlots = function(){
 }
 
 FreeBusy.prototype.similar = function(f){
-    return this.freebusy.length == f.freebusy.length && this.start.format() == f.start.format();
+    return this.freebusy.length == f.freebusy.length && this.start == f.start;
 }
 
 FreeBusy.prototype.overlap = function(...a) {
@@ -135,5 +135,28 @@ FreeBusy.prototype.loadFactor = function(a){
 	return this.freebusy.split('')
 	    .filter(e => { return e == 0 })
 	    .length
+    }
+}
+
+FreeBusy.prototype.setSlots = function(start, end, busy) {
+    var start = new Date(start);
+    var end = new Date(end)
+
+    var ref = this.start
+    var interval = this.interval
+    
+    var startSlot = Math.floor((start.valueOf() - ref.valueOf()) / (interval * 60 * 1000))
+    var endSlot = Math.ceil((end.valueOf() - ref.valueOf()) / (interval * 60  * 1000)) - 1
+
+    var fb = this.freebusy.split('');
+    for (i = startSlot; i <= endSlot; i++) { fb[i] = 1 }
+    this.freebusy = fb.join('')
+}
+
+FreeBusy.prototype.valueOf = function(){
+    return {
+	start:    this.start,
+	freebusy: this.freebusy,
+	interval: this.interval
     }
 }
