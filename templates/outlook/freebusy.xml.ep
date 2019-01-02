@@ -64,10 +64,17 @@
   <t:TimeZone Id="UTC" />
   <t:FreeBusyViewOptions>
     <t:TimeWindow>
-      <t:StartTime><%= stash('start') %></t:StartTime>
-      <t:EndTime><%= stash('end') %></t:EndTime>
+      <t:StartTime><%= stash('start')->set_time_zone('UTC')->strftime('%Y-%m-%dT%H:%M:%S') %></t:StartTime>
+      <t:EndTime><%= stash('end')->set_time_zone('UTC')->strftime('%Y-%m-%dT%H:%M:%S') %></t:EndTime>
     </t:TimeWindow>
     <t:MergedFreeBusyIntervalInMinutes><%= $interval %></t:MergedFreeBusyIntervalInMinutes>
+    <!-- None or MergedOnly or FreeBusy or FreeBusyMerged or Detailed
+	 or DetailedMerged
+	 DetailedMerged and MergedOnly are the only worth ones
+	 FreeBusy or FreeBusyMerged only return the busy times - no
+	 detail and no freebusy string
+    -->
+    
     <t:RequestedView>MergedOnly</t:RequestedView>
   </t:FreeBusyViewOptions>
 </m:GetUserAvailabilityRequest>
