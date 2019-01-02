@@ -1,0 +1,5 @@
+% layout 'outlook/header', format => 'xml';
+% content_for body => begin
+<m:GetServerTimeZones ReturnFullTimeZoneData="true">
+</m:GetServerTimeZones>
+% end
