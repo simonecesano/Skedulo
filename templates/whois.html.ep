@@ -1,0 +1,172 @@
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/later/1.2.0/later.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.devbridge-autocomplete/1.4.9/jquery.autocomplete.min.js"></script>
+<script src="/static/handlebars-helpers.js"></script>
+<script src="/static/jquery.handlebars.js"></script>
+<script src="/static/workday.js"></script>
+<script src="/static/freebusy.js"></script>
+% layout 'default';
+<style>
+table {
+    table-layout:fixed; width:20em; margin-top: 12px;
+
+    border-collapse: separate;
+    border-spacing-bottom:6px;
+    border-spacing-top:6px;
+    border-spacing-left:0px;
+    border-spacing-right:0px;
+}
+
+td.day { width: 4em; font-size: small; border-top: thin solid Gainsboro; border-right: thin solid Gainsboro }
+td.day:empty { width: 4em; font-size: small; border: none }
+td.hours { font-size: small; border-left: thin solid Gainsboro }
+
+#perc { margin-top; 3em; padding-top; 3em }
+#perc div { display: inline-block; margin:0; padding:0; border: none }
+
+.load td { height: 0.6em } 
+
+.fb1, .fb2, .fb3, .fb0 { width:0.6em; height: 0.6em }
+.fb0 { background-color: white; border-right: thin solid Gainsboro  }
+
+.fb1, .fb2, .fb3 { background-color: #e31a1c; border-right: thin solid white }
+
+.me .fb1, .me .fb2, .me  .fb3       { background-color: #ff7f00 }
+.them .fb1, .them .fb2, .them .fb3 { background-color: #6a3d9a }
+
+
+</style>
+<style>
+.autocomplete-suggestions { border: 1px solid #999; background: #FFF; overflow: auto; }
+.autocomplete-suggestion { padding: 2px 5px; white-space: nowrap; overflow: hidden; }
+.autocomplete-selected { background: #F0F0F0; }
+.autocomplete-suggestions strong { font-weight: normal; color: #3399FF; }
+.autocomplete-group { padding: 2px 5px; }
+.autocomplete-group strong { display: block; border-bottom: 1px solid #000; }  
+</style>
+%= include 'navbar';
+<div class="col">
+  <div id="search">
+    <h4>search for a person</h4>
+    <form>
+      <div class="form-group row">
+	<div class="col-12">
+	  <input aria-describedby="subject" class="form-control time" id="name" name="name" type="text">
+	</div>
+      </div>
+    </form>
+  </div>
+  <div id="details">
+  </div>
+  <div id="loadchart">
+  </div>
+</div>
+%= include 'bottom_bar';
+<script>
+var App = {};
+App.render = function(suggestion){
+    $('#details').html($().template('person')(suggestion.data));
+    // check availability
+    window.location.hash = "#" + suggestion.data.Contact.DisplayName;
+    $('#search').hide();
+    Promise.all([
+	$.get('<%= url_for('/freebusy/') %>' + suggestion.data.Mailbox.EmailAddress + '?format=json'),
+	$.get('<%= url_for('/freebusy/') %>' + '?format=json'),
+	$.get('<%= url_for('/timezone/') %>' + suggestion.data.Mailbox.EmailAddress + '?format=json')
+    ]).then(d => {
+	var load = {};
+
+	var fb = new FreeBusy(d[0].start, d[0].freebusy, d[0].interval)
+	var me = new FreeBusy(d[1].start, d[1].freebusy, d[1].interval)
+	
+	load.me   = me.fold(24).map(e => { return e.split('') } );
+	load.them = fb.fold(24).map(e => { return e.split('') } );
+
+	var weekdays = [0, 1, 2, 3, 4, 5, 6].map(e => { return moment().add(e, 'days').format('ddd DD') });
+	
+	var source   = document.getElementById("load-template").innerHTML;
+	var template = Handlebars.compile(source);
+	
+	var html    = template({
+	    weekdays: weekdays,
+	    seq: ['them', 'me'],
+	    load: load,
+	    hours: Array.apply(null, {length: 6}).map(Number.call, Number).map(e => { return ('' + (e * 4)).padStart(2, '0')})
+	})
+	
+	console.log(load);
+	// console.log(html);
+	$('#loadchart').html(html);	
+    }).catch(e => { console.log(e) })
+};
+
+$(function(){
+    var name = unescape(window.location.hash.replace(/^#/, ''))
+    console.log(name);
+    if (name) {
+	$.get("<%= url_for('/whois') %>", { query: name },
+	      function(d) {
+		  if (d.suggestions.length == 1) {
+		      console.log(d.suggestions[0]);
+		      App.render(d.suggestions.shift())
+		  } else {
+		      
+		  }
+	      })
+    }
+    $('#name').autocomplete({
+	serviceUrl: '<%= url_for('/whois') %>',
+	minChars: 4,
+	onSelect: function(suggestion) { App.render(suggestion) }
+    });
+})
+</script>
+<script id="person-template" type="text/x-handlebars-template">
+  {{#with Contact }}
+  <h4>{{ DisplayName }}</h4><br />
+  {{/with}}
+  <a href="mailto:{{ Mailbox.EmailAddress }}">{{ Mailbox.EmailAddress }}</a><br />
+  {{#each Contact.PhoneNumbers.Entry }}
+  {{#if content}}
+  {{Key}}: <a href="tel:{{content}}">{{content}}</a><br />
+  {{/if}}
+  {{/each}}
+  <hr />
+  {{#with Contact }}
+    {{ JobTitle }}<br />
+    {{ Department }}<br />
+    {{ OfficeLocation }}<br />
+  {{/with}}
+  <hr />
+</script>
+
+<script id="load-template" type="text/x-handlebars-template">
+  <table>
+    <tbody>
+      <tr>
+	<td class="day"></td>
+	{{#each hours}}
+	<td class="hours" colspan="4">{{ this }}</td>
+	{{/each}}
+      </tr>
+      {{#each weekdays}}
+      {{#each ../seq}}
+      <tr class="{{ this }} day d{{@../index}}" >
+	{{#unless @index}}
+	<td class="load day" rowspan="{{ ../../seq.length }}">{{ ../this }}</td>
+	{{/unless}}
+	{{#with (lookup ../../load this) as |dayload|}}
+	{{#with (lookup this @../index) as |dayload|}}
+	{{#each dayload }}
+	<td class="load fb{{ this }}"></td>
+	{{/each}}	
+	{{/with}}
+	{{/with}}
+      </tr>
+      {{/each}}
+      {{/each}}
+    </tbody>
+  </table>
+  <hr/>
+</script>
