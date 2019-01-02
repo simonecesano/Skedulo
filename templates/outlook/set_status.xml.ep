@@ -1,0 +1,19 @@
+% layout 'outlook/header', format => 'xml';
+% content_for body => begin
+<m:UpdateItem SendMeetingInvitationsOrCancellations="SendToNone" MessageDisposition="SaveOnly" ConflictResolution="AutoResolve">
+  <m:ItemChanges>
+    <t:ItemChange>
+      <t:ItemId Id="<%= $id %>" ChangeKey="<%= $change_key %>" />
+      <t:Updates>
+        <t:SetItemField>
+          <t:FieldURI FieldURI="calendar:LegacyFreeBusyStatus"/>
+          <t:CalendarItem>
+            <t:LegacyFreeBusyStatus><%= $status %></t:LegacyFreeBusyStatus>
+          </t:CalendarItem>
+        </t:SetItemField>
+      </t:Updates>
+    </t:ItemChange>
+  </m:ItemChanges>
+</m:UpdateItem>
+% end
+
