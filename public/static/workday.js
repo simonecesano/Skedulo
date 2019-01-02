@@ -83,8 +83,8 @@ WorkDay.prototype.schedule = function(start, end, destTZ){
 WorkDay.prototype.freebusy = function(start, end, duration, destTZ){
 
     duration = duration || WorkDay.duration || 60;
-    start    = start    || WorkDay.start    || moment().startOf('Day');
-    end      = end      || WorkDay.end      || moment().startOf('Day').add(7, 'days');
+    start    = start    || WorkDay.start    || new Date((new Date()).setHours(0, 0, 0, 0));
+    end      = end      || WorkDay.end      || new Date((new Date()).setHours(0, 0, 0, 0) + (7 * 24 * 3600 * 1000));
     destTz   = destTZ   || WorkDay.destTZ   || Intl.DateTimeFormat().resolvedOptions().timeZone;
     
     var t = this.schedule(start, end, destTZ);
@@ -113,7 +113,7 @@ WorkDay.prototype.freebusy = function(start, end, duration, destTZ){
 }
 
 WorkDay.prototype.freebusyObj = function(start, end, duration, destTZ){
-    start    = start    || WorkDay.start    || moment().startOf('Day');
+    start    = start    || WorkDay.start    || new Date((new Date()).setHours(0, 0, 0, 0));
     duration = duration || WorkDay.duration || 60;
     
     return new FreeBusy(start, this.freebusy(start, end, duration, destTZ), duration)
