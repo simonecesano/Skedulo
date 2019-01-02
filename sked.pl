@@ -2,7 +2,7 @@
 use FindBin qw($Bin);
 use lib "$Bin/lib";
 use Mojolicious::Lite;
-use Date::Parse;
+# use Date::Parse;
 use DateTime;
 use Data::Dump qw/dump/;
 use Mojo::Util qw/dumper/;
@@ -20,8 +20,6 @@ push @{app->static->paths} => './node_modules';
 
 push @{app->routes->namespaces}, 'Skedulo::Controller';
 push @{app->plugins->namespaces}, 'Skedulo::Plugin';
-
-
 
 plugin 'Config';
 plugin 'EWS';
@@ -72,17 +70,37 @@ get '/setup/:folder' => { controller => 'User', action => 'setup_folder' };
     
 get '/meet/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => { controller => 'Meetings', action => 'meetings_list' };
 
+get '/blocks' => sub {
+    my $c = shift;
+
+    $c->stash('start', DateTime->today);
+    $c->stash('end', DateTime->today->add(days => 7));
+
+    my $tx = $c->get_ews('outlook/blocks');
+    my $dom = $tx->res->dom;
+    $c->render(json => xml_to_hash($dom->at('Items')));
+};
+
+post '/foo/bar' => sub {
+    my $c = shift;
+    $c->params_to_stash(qw/id change_key status/);
+    my $tx = $c->get_ews('outlook/set_status');
+    my $dom = $tx->res->dom;
+    $c->app->log->info($dom);
+    $c->render(json => xml_to_hash($dom));
+};
+
 
 any '/make/me/:start/:end' => sub {
     my $c = shift;
 
+    my $strp = DateTime::Format::Strptime->new( pattern   => '%Y-%m-%dT%H:%M:%S%z', time_zone => 'Europe/Berlin', );
+
+    $c->set_user();
+    $c->set_dates();
     $c->params_to_stash(qw/subject location sensitivity body attendees[] categories[]/);
 
-    $c->app->log->info($c->stash('start'), $c->stash('end')); 
-    $c->stash('subject', '');
-    
     my $tx = $c->get_ews('outlook/schedule_meeting');
-    
     my $dom = $tx->res->dom;
     
     for ($c->stash('format')) {
@@ -92,11 +110,11 @@ any '/make/me/:start/:end' => sub {
 	/json/i && do {
 	    my $json;
 	    if ($tx->res->is_success) {
+		# $c->app->log->info($dom);
 		$json = xml_to_hash($dom->at('ResponseCode'));
-		return $c->render( json => { freebusy => $json } )
+		return $c->render( json => { start => $c->stash('start'), end => $c->stash('end'), freebusy => $json } )
 	    } else {
 		$c->res->code(500);
-		$c->app->log->info($dom);
 		$json = { message => $dom->at('ResponseCode')->all_text };
 		return $c->render( json => $json )
 	    }
@@ -122,15 +140,13 @@ get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7'
     $c->set_dates();
     $c->set_user();
 
-    $c->app->log->info($c->stash('who'));
-
-    $c->app->log->info(dump $c->req->cookies);
-    
     if ($c->stash('format') =~/(^$)|(html$)/) { return $c->render(template => 'freebusy') }
 
     $c->stash('interval', 60) unless $c->stash('interval');
     
     my $tx = $c->get_ews('outlook/freebusy');
+
+    my $req = $tx->req->body;
     my $dom = $tx->res->dom;
 
     for ($c->stash('format')) {
@@ -140,26 +156,23 @@ get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7'
 	/json/i && do {
 	    my $json;
 	    if ($tx->res->is_success) {
-		my $fb = (xml_to_hash($dom->find('MergedFreeBusy')))->[0]->{content};
-		my $wp = (xml_to_hash($dom->find('WorkingPeriodArray')))->[0]->{WorkingPeriod};
-		
-		$c->app->log->info(dump $wp);
+		my $fb = xml_to_hash($dom->at('MergedFreeBusy'))->{content};
+		my $wp = xml_to_hash($dom->at('WorkingPeriod'));
+
 		$wp->{days} = [ (split /\s+/, delete $wp->{DayOfWeek}) ]; # =~ s/ /, /gr;
 		$wp->{start} = mins_to_hour(delete $wp->{StartTimeInMinutes});
 		$wp->{end} = mins_to_hour(delete $wp->{EndTimeInMinutes});
 
-		$c->app->log->info(ref $c->stash('start'));
-		$c->app->log->info($c->stash('start'));
-		$c->app->log->info($c->stash('start')->format_cldr('yyyy-MM-ddThh:mm:ssZZZZZ'));
 		return $c->render( json => {
-					    start => $c->stash('start')->format_cldr('yyyy-MM-ddThh:mm:ssZZZZZ'),
+					    start => $c->stash('start')->set_time_zone('Europe/Berlin'),
 					    interval => $c->stash('interval'),
 					    freebusy => $fb,
 					    working_time => $wp
 					   } )
 	    } else {
 		$c->res->code(500);
-		my $json = { message => $dom->at('ResponseCode')->all_text };
+		$c->app->log->debug($req);
+		my $json = { message => eval { $dom->at('ResponseCode')->all_text } || 'N/A', res => $dom, req => $req };
 		return $c->render( json => $json )
 	    }
 	}	    
@@ -167,21 +180,13 @@ get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7'
 };
 
 use POSIX qw/floor/;
+
 sub mins_to_hour {
     my $m = shift;
     my $h = floor($m / 60);
     $m = $m % 60;
     return sprintf '%02d:%02d', $h, $m;
 }
-
-get '/thing' => sub {
-    my $c = shift;
-
-    $c->stash('tz_info', $c->ews_tz_definition('UTC') );
-
-    $c->res->headers->content_type('text/plain');
-    $c->render(inline => '<%== $tz_info %>' )
-};
 
 
 get  '/timezone'            => { controller => 'TimeZones', action => 'get_timezone' };
@@ -213,6 +218,7 @@ get '/help' => sub {
     my $c = shift;
     $c->stash('referrer', Mojo::URL->new($c->req->headers->referrer)->path =~ s/\///r );
 };
+
 
 app->start;
 
