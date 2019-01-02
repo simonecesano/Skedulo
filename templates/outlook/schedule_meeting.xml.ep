@@ -63,13 +63,13 @@
     <t:CalendarItem>
       <t:Categories>
 	% for my $k (@$categories) {
-	<t:String>block</t:String>
+	<t:String>block</t:String>	
 	% }
       </t:Categories>
       <t:Subject><%= $subject %></t:Subject>
       <t:Body BodyType="HTML"><%= $body %></t:Body>
-      <t:Start><%= $start %></t:Start>
-      <t:End><%= $end %></t:End>
+      <t:Start><%= $start->set_time_zone('UTC')->strftime('%Y-%m-%dT%H:%M:%S') %></t:Start>
+      <t:End><%= $end->set_time_zone('UTC')->strftime('%Y-%m-%dT%H:%M:%S') %></t:End>
       <t:Location><%= $location %></t:Location>
       <t:Sensitivity><%= $sensitivity || 'Private' %></t:Sensitivity>
       % if (@$attendees) {
