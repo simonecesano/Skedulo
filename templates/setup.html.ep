@@ -1,0 +1,139 @@
+% layout 'default';
+<script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.10.0/js/md5.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/later/1.2.0/later.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.devbridge-autocomplete/1.4.9/jquery.autocomplete.min.js"></script>
+<script src="/static/handlebars-helpers.js"></script>
+<script src="/static/jquery.handlebars.js"></script>
+<script src="/static/workday.js"></script>
+<script src="/static/freebusy.js"></script>
+<script src="/static/chrono.min.js"></script>
+<style>
+  .skbutton {
+    height:3em;
+    line-height:3em;
+    background-color:#1f78b4;
+    text-align:center;
+    text-weight:bold;
+    color:white;
+  margin-top:1em;
+  // display: inline-block !important;
+  }
+.autocomplete-suggestions { border: 1px solid #999; background: #FFF; overflow: auto; }
+.autocomplete-suggestion { padding: 2px 5px; white-space: nowrap; overflow: hidden; }
+.autocomplete-selected { background: #F0F0F0; }
+.autocomplete-suggestions strong { font-weight: normal; color: #3399FF; }
+.autocomplete-group { padding: 2px 5px; }
+.autocomplete-group strong { display: block; border-bottom: 1px solid #000; }  
+</style>
+%= include 'navbar';
+<div class="col">
+  <h4>set up a meeting</h4>
+  <form>
+    <div class="form-group row">
+      <label class="col-3 col-form-label" for="subject">subject</label>
+      <div class="col-9">
+	<input aria-describedby="subject" class="form-control time" id="subject" name="subject" type="text">
+      </div>
+    </div>
+    <div class="form-group row">
+      <label class="col-3 col-form-label" for="length">length</label>
+      <div class="col-3">
+	<input aria-describedby="duration" class="form-control time" id="length" name="length" type="text">
+      </div>
+      <div class="form-check form-check-inline">
+	<label class="form-check-label">
+	  <input class="form-check-input" id="private" name="private" type="checkbox" value="private">private
+	</label>
+      </div>
+      <div class="form-check form-check-inline">
+	<label class="form-check-label">
+	  <input class="form-check-input" id="allday" name="allday" type="checkbox" value="allday">all day
+	</label>
+      </div>
+    </div>
+    <div class="form-group row">
+      <label class="col-3 col-form-label" for="on">on/after</label>
+      <div class="col-7">
+	<input aria-describedby="on or after" class="form-control time" id="on_or_after" name="on_or_after" type="text">
+      </div>
+    </div>
+  </form>
+  <div id="add" class="skbutton">add another person</div>
+  <div id="save" class="skbutton">save schedule</div>
+  <hr />
+</div>
+%= include 'bottom_bar';
+<script>
+    
+
+$(function(){
+    var app = {};
+    app.addNameForm = function(){
+	$('form').append($().template('name')({ idx: ++idx }));
+	$('#name' + idx).focus()
+	$('#name' + idx).autocomplete({
+	    serviceUrl: '<%= url_for('/whois') %>',
+	    minChars: 4,
+	    onSelect: function (suggestion) {
+		console.log(suggestion)
+		Promise.all([
+		    $.get('<%= url_for('/timezone/') %>' + suggestion.data.Mailbox.EmailAddress + '?format=json'),
+		    $.get('<%= url_for('/freebusy/') %>' + suggestion.data.Mailbox.EmailAddress + '?format=json'),
+		]).then(d => {
+		    console.log('here')
+		    console.log(d)
+		    try {
+			var fb = new FreeBusy(d[1].start, d[1].freebusy, d[1].interval);
+			console.log(fb)
+			schedules[suggestion.data.Mailbox.EmailAddress] = fb;
+		    } catch(e){
+			console.log(e);
+		    }
+		    console.log(schedules[suggestion.data.Mailbox.EmailAddress].slice(new Date()))
+		    console.log(schedules);
+		})
+	    }
+	})
+    }
+    
+    var idx = 1;
+    // var form = $().template('name')({ idx: 1 })
+
+
+    var schedules = {};
+    $.get('<%= url_for('/freebusy/me') %>?format=json',
+	  function(d){
+	      schedules['me'] = d;
+	      app.addNameForm()
+	  });
+
+    $('#add').click(function(){
+	app.addNameForm()
+    })
+    
+    $('#on_or_after').focusout( e => {
+	var v = $(e.target).val();
+	v = v.replace(/^\s*ASAP\s*/, 'now')
+	    .replace(/^\s*as soon as possible\s*/i, 'now')
+	console.log(v)
+	console.log(chrono.parseDate(v))
+    })
+    
+    $('#save').click(function(){
+	console.log($('form').serialize())
+	
+    })
+})
+</script>
+<script id="name-template" type="text/x-handlebars-template">
+  <div id="block{{ idx }}">
+    <div class="form-group row">
+      <label class="col-3 col-form-label" for="name{{ idx }}">name</label>
+      <div class="col-7">
+	<input type="text" class="form-control time" id="name{{ idx }}" name="name"  aria-describedby="name">
+      </div>
+    </div>
+  </div>  
+</script>
