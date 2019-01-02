@@ -8,7 +8,7 @@
         <t:SetItemField>
           <t:FieldURI FieldURI="calendar:LegacyFreeBusyStatus"/>
           <t:CalendarItem>
-            <t:LegacyFreeBusyStatus><%= $status %></t:LegacyFreeBusyStatus>
+            <t:LegacyFreeBusyStatus><%= $meeting_status %></t:LegacyFreeBusyStatus>
           </t:CalendarItem>
         </t:SetItemField>
       </t:Updates>
