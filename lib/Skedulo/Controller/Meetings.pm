@@ -2,6 +2,7 @@ package Skedulo::Controller::Meetings;
 
 use Mojo::Base 'Mojolicious::Controller';
 use Skedulo::Util qw/pp_xml xml_to_hash/;
+use Skedulo::DateTime;
 use Data::Dump qw/dump/;
 
 sub dates {
@@ -35,6 +36,9 @@ sub meetings_list {
 		return $c->render( json => { meetings => $json } )
 	    } else {
 		$c->res->code(500);
+		$c->app->log->debug($tx->req->body);
+		$c->app->log->debug($dom);
+		
 		$json = { message => $dom->at('ResponseCode')->all_text };
 		return $c->render( json => $json )
 	    }
