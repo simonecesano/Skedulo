@@ -5,7 +5,11 @@ a { color: black }
 
 h4, h3 { padding-top: 12px;  }
 
+div.meeting:first-child {
+    margin-top: 0px;
+}
 div.meeting {
+    margin-top: 3px;
     border-left: 16px solid #b2df8a ;
     padding: 4px;
 }
@@ -13,6 +17,10 @@ div.meeting {
 div.meeting:nth-child(odd) {
     background-color: #eeeeee
 }
+div.meeting:nth-child(even) {
+}
+
+
 div.meeting.canceled { border-left: 16px solid #a6cee3 }
 
 div.meeting.conflict { border-left: 16px solid #b61516 }
