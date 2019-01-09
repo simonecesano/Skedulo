@@ -1,11 +1,11 @@
 % layout 'default';
-<script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.10.0/js/md5.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.22.2/moment.min.js"></script>
 <script src="/static/moment-timezone.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/blueimp-md5/2.10.0/js/md5.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.11/lodash.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/later/1.2.0/later.min.js"></script>
-
 <script src="/static/handlebars-helpers.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/bluebird/3.5.3/bluebird.min.js"></script>
 <script src="/static/workday.js"></script>
 <script src="/static/freebusy.js"></script>    
 <style>
@@ -26,7 +26,7 @@ td.day { width: 4em; font-size: small; border-top: thin solid grey }
 .meetings td, .workday td { height: 0.6em } 
 .summary td { height: 0.6em } 
 
-.fb1, .fb2, .fb3, fb0 { width:0.6em; height: 0.6em }
+.fb1, .fb2, .fb3, .fb0 { width:0.6em; height: 0.6em }
 .fb0 { background-color: white; border-right: thin solid grey  }
 
 .fb1, .fb2, .fb3 { background-color: #e31a1c; border-right: thin solid white }
@@ -37,94 +37,116 @@ td.day { width: 4em; font-size: small; border-top: thin solid grey }
 %= include 'navbar';
 <div id="meetings" class="col">
   <span id="fb"></span>
+  <div class="skbutton" id="fill">fill slots</div>
+  <div class="skbutton" id="toggle_blocks">toggle blocks</div>
 </div>
 %= include 'bottom_bar';
 <script>
   $(function(){
-      setTimeout(function(){
-          // This hides the address bar:
-          window.scrollTo(0, 1);
-      }, 0);
+      var App = {};
+      
       var wd = WorkDay.parse(
 	  'at 9:00am on Mon, Tue, Wed, Thu, Fri',
 	  'at 6:00pm on Mon, Tue, Wed, Thu, Fri',
       );
 
       console.log(wd);
+      var cb;
       
       var t = wd.freebusy(new Date("<%= stash('start') %>"), new Date("<%= stash('end') %>"), 60);
       wd = new FreeBusy(new Date("<%= stash('start') %>"), t, 60)
+
+      App.render = function(){
+	  $.get("<%= url_for('/freebusy/me') %>/<%= stash('start') %>/<%= stash('end') %>.json", function(d){
+	      
+	      var fb = new FreeBusy(new Date("<%= stash('start') %>"), d.freebusy, 60);
+	      	      
+	      var weekdays = [0, 1, 2, 3, 4, 5, 6].map(e => {
+		  return moment("<%= stash('start')->strftime('%Y-%m-%dT%H:%M:%S%z') %>")
+		      .add(e, 'days').format('ddd DD');
+	      });
+
+	      var source   = document.getElementById("load-template-old").innerHTML;
+	      var template = Handlebars.compile(source);
+
+	      var load = {
+		  wd: wd.fold(24).map(e => { return e.split('') } ),
+		  me: fb.fold(24).map(e => { return e.split('') } ),
+	      }
+	      
+	      var source   = document.getElementById("load-template").innerHTML;
+	      var template = Handlebars.compile(source);
+
+	      var html    = template({
+		  weekdays: weekdays,
+		  seq: ['me', 'wd'],
+		  load: load,
+		  hours: Array.apply(null, {length: 6}).map(Number.call, Number).map(e => { return ('' + (e * 4)).padStart(2, '0')})
+	      })
+
+	      $('#fb').html(html)
+	  });
+      };
+
+      App.render()
+
+      App.toggleBlocks = function(){
+	  $.get("<%= url_for('/blocks') %>?format=json",
+		function(d){
+		    var status = d.CalendarItem.filter(e => { return e.LegacyFreeBusyStatus.match(/free/i) }).length ? 
+			'Busy' : 'Free';
+		    
+		    Promise.all(
+			d.CalendarItem.map(e => {
+			    return { id: e.ItemId.Id, change_key: e.ItemId.ChangeKey, meeting_status: status }
+			}).map(e => {
+			    return $.post("<%= url_for('/blocks/toggle') %>", e);
+			})
+		    ).then(d => {
+			App.blockStatus = status;
+			Promise.delay(1000).then(function() {
+			    App.render()
+			}).then(e => {
+			    console.log(d)
+			})
+		    }).catch(e => {
+			console.log(d);
+		    });
+		}).catch(e => { console.log(e) })
+      }
       
-      $.get("<%= url_for('/freebusy/me') %>/<%= stash('start') %>/<%= stash('end') %>.json", function(d){
-	  // console.log(d.freebusy);
-	  var fb = new FreeBusy(new Date("<%= stash('start') %>"), d.freebusy, 60);
-	  var cb = FreeBusy.combine(wd, fb);
+      var intervalID = window.setInterval(App.render, 30 * 1000);
+
+      $('#toggle_blocks').click(function(){ App.toggleBlocks() })
   
-	  var days = _.zip(
-	      wd.fold(24).map(e => { return e.split('') } ),
-	      fb.fold(24).map(e => { return e.split('') } ),
-	      cb.fold(24).map(e => { return e.split('') } )
-	  );
-
-	  var source   = document.getElementById("load-template").innerHTML;
-	  var template = Handlebars.compile(source);
-
-	  var weekdays = [0, 1, 2, 3, 4, 5, 6].map(e => {
-	      return moment("<%= stash('start') %>")
-		  .add(e, 'days').format('ddd DD');
-	  });
-  
-	  var html    = template({
-	      days: days,
-	      weekdays: weekdays,
-	      workhours: wd.loadFactor(),
-	      freeslots: fb.loadFactor(wd),
-	      freeperc: Math.floor(fb.loadFactor(wd) / wd.loadFactor() * 100)
-	  });
-	  $('#fb').html(html)
-
-	  // fb.asSlots().forEach(e => { console.log(e) });
-
-	  $('#fill').click(function(){
-	      cb.asSlots()
-		  .filter(e => { return e.free })
-		  .forEach(e => {
-		      // console.log(moment(e.start).format('Y-MM-DDTHH:mm:ssZ') + '-' + moment(e.end).format('Y-MM-DDTHH:mm:ssZ'));
-		      $.post("<%= url_for('/make/me/') %>" +
-		      	     moment(e.start).format('Y-MM-DDTHH:mm:ssZ') + '/' +
-		      	     moment(e.end).format('Y-MM-DDTHH:mm:ssZ') + '?format=json',
-		      	 function(d){
-		      	     console.log(d);
-		      	 })
+      $('#fill').click(function(){
+	  if (cb) {
+	      Promise.all(
+		  cb.asSlots()
+		      .filter(e => { return e.free })
+		      .map(e => {
+			  return $.post("<%= url_for('/meeting/') %>" +
+		      			moment(e.start).format('Y-MM-DDTHH:mm:ssZZ') + '/' +
+		      			moment(e.end).format('Y-MM-DDTHH:mm:ssZZ') + '',
+		      			{ categories: [ 'block' ], format: 'json' },
+		      			function(d){
+		      			    console.log(JSON.stringify(d));
+		      			})
+		      })
+	      ).then(function(d) {
+		  Promise.delay(3000).then(function() {
+		      App.render()
+		  }).then(e => {
+		      console.log(d)
 		  })
-	  })
-      })
+	      }).catch(function(e){
+		  console.log(e)
+	      })
+	  }
+      });
   })
 </script>
-<script id="load-template" type="text/x-handlebars-template">
-  <h4>load chart</h4>    
-  <table>
-    <tbody>
-      {{#each days}}
-      <tr class="day workday" >
-	<td class="day" rowspan="3">{{ lookup ../weekdays @index }}</td>
-	{{#each this.[0] }}
-	<td class="fb{{ this }}"></td>
-	{{/each}}
-      </tr>
-      <tr class="meetings">
-	{{#each this.[1] }}
-	<td class="fb{{ this }}"></td>
-	{{/each}}
-      </tr>
-      <tr class="summary">
-	{{#each this.[2] }}
-	<td class="fb{{ this }}"></td>
-	{{/each}}
-      </tr>
-      {{/each}}
-    </tbody>
-  </table>
+<script id="gauge-template" type="text/x-handlebars-template">
   <hr/>
   <div id="perc">
     <div style="width:50%">Free: {{ freeslots }}</div><div style="width:50%;text-align:right">Busy: {{ workhours }}</div>
@@ -134,5 +156,5 @@ td.day { width: 4em; font-size: small; border-top: thin solid grey }
     <div style="width:{{ math 99 '-' freeperc }}%;background-color:#e31a1c">&nbsp;</div>
     <hr/>
   </div>
-  <div class="skbutton" id="fill">fill slots</div>
 </script>
+%= include 'load_table';
