@@ -62,8 +62,6 @@ get '/me';
 
 get '/error';
 
-get '/session';
-
 post '/login' => { controller => 'User', action => 'post_login' };
 
 get '/setup/:folder' => { controller => 'User', action => 'setup_folder' };
@@ -81,113 +79,29 @@ get '/blocks' => sub {
     $c->render(json => xml_to_hash($dom->at('Items')));
 };
 
-post '/foo/bar' => sub {
+post '/blocks/toggle' => sub {
     my $c = shift;
-    $c->params_to_stash(qw/id change_key status/);
+
+    $c->params_to_stash(qw/id change_key meeting_status/);
+
+    $c->app->log->debug($c->req->url);
+    $c->app->log->debug($c->stash('status'));
+
     my $tx = $c->get_ews('outlook/set_status');
     my $dom = $tx->res->dom;
-    $c->app->log->info($dom);
     $c->render(json => xml_to_hash($dom));
 };
 
 
-any '/make/me/:start/:end' => sub {
-    my $c = shift;
-
-    my $strp = DateTime::Format::Strptime->new( pattern   => '%Y-%m-%dT%H:%M:%S%z', time_zone => 'Europe/Berlin', );
-
-    $c->set_user();
-    $c->set_dates();
-    $c->params_to_stash(qw/subject location sensitivity body attendees[] categories[]/);
-
-    my $tx = $c->get_ews('outlook/schedule_meeting');
-    my $dom = $tx->res->dom;
-    
-    for ($c->stash('format')) {
-	/xml/i && do {
-	    return $c->render( text => pp_xml($dom) )
-	};
-	/json/i && do {
-	    my $json;
-	    if ($tx->res->is_success) {
-		# $c->app->log->info($dom);
-		$json = xml_to_hash($dom->at('ResponseCode'));
-		return $c->render( json => { start => $c->stash('start'), end => $c->stash('end'), freebusy => $json } )
-	    } else {
-		$c->res->code(500);
-		$json = { message => $dom->at('ResponseCode')->all_text };
-		return $c->render( json => $json )
-	    }
-	}	    
-    }
-};
-
+post '/meeting/:start/:end' => { controller => 'Meetings', action => 'schedule_meeting' };
 
 get '/item/*id' => { controller => 'Meetings', action => 'calendar_item' };
 
 post '/item/*id' => { controller => 'Meetings', action => 'calendar_action' };
 
-get '/load/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
-    my $c = shift;
-    $c->set_dates();
-    $c->set_user();
-    return $c->render(template => 'load')
-};
+get  '/load/:who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub { my $c = shift; $c->set_dates()->set_user(); $c->render(template => 'load') };
 
-get '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => sub {
-    my $c = shift;
-
-    $c->set_dates();
-    $c->set_user();
-
-    if ($c->stash('format') =~/(^$)|(html$)/) { return $c->render(template => 'freebusy') }
-
-    $c->stash('interval', 60) unless $c->stash('interval');
-    
-    my $tx = $c->get_ews('outlook/freebusy');
-
-    my $req = $tx->req->body;
-    my $dom = $tx->res->dom;
-
-    for ($c->stash('format')) {
-	/xml/i && do {
-	    return $c->render( text => pp_xml($dom) )
-	};
-	/json/i && do {
-	    my $json;
-	    if ($tx->res->is_success) {
-		my $fb = xml_to_hash($dom->at('MergedFreeBusy'))->{content};
-		my $wp = xml_to_hash($dom->at('WorkingPeriod'));
-
-		$wp->{days} = [ (split /\s+/, delete $wp->{DayOfWeek}) ]; # =~ s/ /, /gr;
-		$wp->{start} = mins_to_hour(delete $wp->{StartTimeInMinutes});
-		$wp->{end} = mins_to_hour(delete $wp->{EndTimeInMinutes});
-
-		return $c->render( json => {
-					    start => $c->stash('start')->set_time_zone('Europe/Berlin'),
-					    interval => $c->stash('interval'),
-					    freebusy => $fb,
-					    working_time => $wp
-					   } )
-	    } else {
-		$c->res->code(500);
-		$c->app->log->debug($req);
-		my $json = { message => eval { $dom->at('ResponseCode')->all_text } || 'N/A', res => $dom, req => $req };
-		return $c->render( json => $json )
-	    }
-	}	    
-    }
-};
-
-use POSIX qw/floor/;
-
-sub mins_to_hour {
-    my $m = shift;
-    my $h = floor($m / 60);
-    $m = $m % 60;
-    return sprintf '%02d:%02d', $h, $m;
-}
-
+get  '/freebusy/#who/:start/:end' => { who => 'me', start => 'today', end => '+7' } => { controller => 'Meetings', action => 'get_freebusy' };
 
 get  '/timezone'            => { controller => 'TimeZones', action => 'get_timezone' };
 
