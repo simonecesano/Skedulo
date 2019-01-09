@@ -7,44 +7,6 @@
 <script src="/static/workday.js"></script>
 <script src="/static/freebusy.js"></script>
 % layout 'default';
-<style>
-table {
-    table-layout:fixed; width:20em; margin-top: 12px;
-
-    border-collapse: separate;
-    border-spacing-bottom:6px;
-    border-spacing-top:6px;
-    border-spacing-left:0px;
-    border-spacing-right:0px;
-}
-
-td.day { width: 4em; font-size: small; border-top: thin solid Gainsboro; border-right: thin solid Gainsboro }
-td.day:empty { width: 4em; font-size: small; border: none }
-td.hours { font-size: small; border-left: thin solid Gainsboro }
-
-#perc { margin-top; 3em; padding-top; 3em }
-#perc div { display: inline-block; margin:0; padding:0; border: none }
-
-.load td { height: 0.6em } 
-
-.fb1, .fb2, .fb3, .fb0 { width:0.6em; height: 0.6em }
-.fb0 { background-color: white; border-right: thin solid Gainsboro  }
-
-.fb1, .fb2, .fb3 { background-color: #e31a1c; border-right: thin solid white }
-
-.me .fb1, .me .fb2, .me  .fb3       { background-color: #ff7f00 }
-.them .fb1, .them .fb2, .them .fb3 { background-color: #6a3d9a }
-
-
-</style>
-<style>
-.autocomplete-suggestions { border: 1px solid #999; background: #FFF; overflow: auto; }
-.autocomplete-suggestion { padding: 2px 5px; white-space: nowrap; overflow: hidden; }
-.autocomplete-selected { background: #F0F0F0; }
-.autocomplete-suggestions strong { font-weight: normal; color: #3399FF; }
-.autocomplete-group { padding: 2px 5px; }
-.autocomplete-group strong { display: block; border-bottom: 1px solid #000; }  
-</style>
 %= include 'navbar';
 <div class="col">
   <div id="search">
@@ -141,32 +103,4 @@ $(function(){
   <hr />
 </script>
 
-<script id="load-template" type="text/x-handlebars-template">
-  <table>
-    <tbody>
-      <tr>
-	<td class="day"></td>
-	{{#each hours}}
-	<td class="hours" colspan="4">{{ this }}</td>
-	{{/each}}
-      </tr>
-      {{#each weekdays}}
-      {{#each ../seq}}
-      <tr class="{{ this }} day d{{@../index}}" >
-	{{#unless @index}}
-	<td class="load day" rowspan="{{ ../../seq.length }}">{{ ../this }}</td>
-	{{/unless}}
-	{{#with (lookup ../../load this) as |dayload|}}
-	{{#with (lookup this @../index) as |dayload|}}
-	{{#each dayload }}
-	<td class="load fb{{ this }}"></td>
-	{{/each}}	
-	{{/with}}
-	{{/with}}
-      </tr>
-      {{/each}}
-      {{/each}}
-    </tbody>
-  </table>
-  <hr/>
-</script>
+%= include 'load_table';
